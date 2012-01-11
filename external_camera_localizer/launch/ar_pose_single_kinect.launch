@@ -1,18 +1,22 @@
 <launch>
 	<node pkg="rviz" type="rviz" name="rviz" 
-		args="-d $(find ar_pose)/launch/live_single.vcg"/>
+		args="-d $(find external_camera_localizer)/launch/ar_viz.vcg"/>
 			
-	<node pkg="tf" type="static_transform_publisher" name="world_to_cam" 
-		args="0 0 0.5 -1.57 0 -1.57 world camera_link 10" />
+	<!--node pkg="tf" type="static_transform_publisher" name="world_to_cam" 
+		args="0 0 0.5 -1.57 0 -1.57 world camera_link 10" /-->
+
+	<node package="tf" type="static_transform_publisher" name="marker_to_cam"
+		args="-0.25 0.05 0.03 -1.5707 -1.5707 0 /cam_marker /camera_link 10"/>
 			
 	<node name="ar_pose" pkg="ar_pose" type="ar_single" respawn="false" output="screen">
 		<param name="marker_pattern" type="string" value="$(find external_camera_localizer)/data/4x4_63.patt"/>
-		<param name="marker_width" type="double" value="80.0"/>
+		<param name="marker_width" type="double" value="67.5"/>
 		<param name="marker_center_x" type="double" value="0.0"/>
 		<param name="marker_center_y" type="double" value="0.0"/>
 		<param name="threshold" type="int" value="100"/>
 		<param name="use_history" type="bool" value="true"/>
-		<remap from="/usb_cam/image_raw" to="/camera/rgb/image_color"/>
-		<remap from="/usb_cam/camera_info" to="/camera/rgb/camera_info"/>
+		<param name="marker_frame" type="string" value="cam_marker"/>
+		<remap from="/usb_cam/image_raw" to="/narrow_stereo/left/image_mono"/>
+		<remap from="/usb_cam/camera_info" to="/narrow_stereo/left/camera_info"/>
   </node>
 </launch>
