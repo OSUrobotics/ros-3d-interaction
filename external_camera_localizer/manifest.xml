@@ -10,7 +10,9 @@
   <url>http://ros.org/wiki/external_camera_localizer</url>
   <depend package="ar_pose"/>
   <depend package="tf"/>
-
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="message_filters"/>
 </package>
 
 
