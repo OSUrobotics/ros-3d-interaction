@@ -1,0 +1,10 @@
+<launch>
+  <node type="laser_scan_assembler" pkg="laser_assembler" name="tilt_scan_assembler">
+    <remap from="scan" to="tilt_scan"/>
+    <param name="max_scans" type="int" value="400" />
+    <param name="fixed_frame" type="string" value="base_link" />
+  </node>
+  <node name="find_transform" pkg="external_camera_localizer" name="find_transform">
+	  <remap from="cloud" to="/camera/depth/points"/>
+  </node>
+</launch>

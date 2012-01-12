@@ -3,45 +3,58 @@
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
 
-int
-main (int argc, char** argv)
-{
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in (new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out (new pcl::PointCloud<pcl::PointXYZ>);
+#include <ros/ros.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
 
-	// Fill in the CloudIn data
-	cloud_in->width    = 5;
-	cloud_in->height   = 1;
-	cloud_in->is_dense = false;
-	cloud_in->points.resize (cloud_in->width * cloud_in->height);
-	for (size_t i = 0; i < cloud_in->points.size (); ++i)
-	{
-		cloud_in->points[i].x = 1024 * rand () / (RAND_MAX + 1.0f);
-		cloud_in->points[i].y = 1024 * rand () / (RAND_MAX + 1.0f);
-		cloud_in->points[i].z = 1024 * rand () / (RAND_MAX + 1.0f);
-	}
-	std::cout << "Saved " << cloud_in->points.size () << " data points to input:"
-	          << std::endl;
-	for (size_t i = 0; i < cloud_in->points.size (); ++i) std::cout << "    " <<
-		        cloud_in->points[i].x << " " << cloud_in->points[i].y << " " <<
-		        cloud_in->points[i].z << std::endl;
-	*cloud_out = *cloud_in;
-	std::cout << "size:" << cloud_out->points.size() << std::endl;
-	for (size_t i = 0; i < cloud_in->points.size (); ++i)
-		cloud_out->points[i].x = cloud_in->points[i].x + 0.7f;
-	std::cout << "Transformed " << cloud_in->points.size () << " data points:"
-	          << std::endl;
-	for (size_t i = 0; i < cloud_out->points.size (); ++i)
-		std::cout << "    " << cloud_out->points[i].x << " " <<
-		          cloud_out->points[i].y << " " << cloud_out->points[i].z << std::endl;
+#include <ros/ros.h>
+#include <laser_assembler/AssembleScans.h>
+
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+using namespace laser_assembler;
+
+ros::ServiceClient client;
+
+PointCloud::Ptr getLaserCloud() {
+	PointCloud::Ptr cloud (new PointCloud);
+	AssembleScans srv;
+	srv.request.begin = ros::Time(0,0);
+	srv.request.end   = ros::Time::now();
+	if (client.call(srv)) {
+		for(int i=0; i<srv.response.cloud.points.size(); i++) {
+			pcl::PointXYZ p = pcl::PointXYZ();
+			p.x = srv.response.cloud.points[i].x;
+			p.y = srv.response.cloud.points[i].y;
+			p.z = srv.response.cloud.points[i].z;
+			
+			cloud->push_back(p);
+		}
+	} else ROS_ERROR("Service call failed\n");
+	return cloud;
+}
+
+void cloudCallback(const PointCloud::ConstPtr& cloud1) {
+	PointCloud::Ptr cloud2 = getLaserCloud();
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-	icp.setInputCloud(cloud_in);
-	icp.setInputTarget(cloud_out);
-	pcl::PointCloud<pcl::PointXYZ> Final;
+	icp.setInputCloud(cloud1);
+	icp.setInputTarget(cloud2);
+	PointCloud Final;
 	icp.align(Final);
 	std::cout << "has converged:" << icp.hasConverged() << " score: " <<
 	          icp.getFitnessScore() << std::endl;
-	std::cout << icp.getFinalTransformation() << std::endl;
+	std::cout << icp.getFinalTransformation() << std::endl;	
+}
 
-	return (0);
+int main (int argc, char** argv) {
+	ros::init(argc, argv, "find_transform");
+	ros::NodeHandle nh;
+	ROS_INFO("Waiting for assembled tilt scans");
+	ros::service::waitForService("assemble_scans");
+	client = nh.serviceClient<AssembleScans>("assemble_scans");
+	ros::Subscriber cloud_sub = nh.subscribe<PointCloud>("cloud", 1, cloudCallback);
+	
+	
+	ros::spin();
+	return 0;
 }

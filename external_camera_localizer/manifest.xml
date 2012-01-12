@@ -13,6 +13,7 @@
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
   <depend package="message_filters"/>
+  <depend package="laser_assembler"/>
 </package>
 
 
