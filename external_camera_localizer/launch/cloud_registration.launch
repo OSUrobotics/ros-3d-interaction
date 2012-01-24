@@ -4,7 +4,9 @@
     <param name="max_scans" type="int" value="400" />
     <param name="fixed_frame" type="string" value="base_link" />
   </node>
-  <node name="find_transform" pkg="external_camera_localizer" name="find_transform">
-	  <remap from="cloud" to="/camera/depth/points"/>
+  <node pkg="external_camera_localizer" type="tilt_scan_to_pointcloud.py" name="scan_to_cloud"/>
+  <node pkg="point_cloud_converter" type="point_cloud_converter" name="laser_cloud_converter">
+	  <remap from="points_in" to="laser_cloud"/>
+	  <remap from="points2_out" to="laser_cloud_converted"/>
   </node>
 </launch>
