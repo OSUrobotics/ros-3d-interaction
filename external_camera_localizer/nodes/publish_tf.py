@@ -10,9 +10,12 @@ load('rosh_robot', globals())
         # logerr('Usage: %s topic1 topic2' % sys.argv[0])
         # exit(1)
     
-topic1 = '/camera1/transformed'
-topic2 = '/camera2/transformed'
+topic1 = '/laser_cloud_converted'
+topic2 = '/external_camera/transformed'
+
+print 'Waiting for', topic1
 cloud1 = topics[topic1][0]
+print 'Waiting for', topic2
 cloud2 = topics[topic2][0]
 
 print 'Waiting for service...'

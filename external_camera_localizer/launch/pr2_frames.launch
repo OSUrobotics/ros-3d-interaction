@@ -1,0 +1,11 @@
+<launch>
+	<arg name="external_camera" default="external_camera" />
+
+	<node pkg="external_camera_localizer" type="transform_pointcloud" name="transform_pointcloud2">
+		<remap from="cloud" to="$(arg external_camera)/depth_registered/points"/>
+		<remap from="cloud_transformed" to="$(arg external_camera)/transformed"/>
+		<param name="target_frame" type="string" value="$(arg external_camera)_link"/>
+	</node>
+	
+	<node pkg="modular_cloud_matcher" type="cloud_matcher_service" name="cloud_matcher_service" output="screen"/>
+</launch>
