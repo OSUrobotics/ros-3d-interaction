@@ -12,7 +12,7 @@ if __name__ == '__main__':
 	cloud_pub = rospy.Publisher('laser_cloud', PointCloud)
 	loop_rate = rospy.Rate(10)
 	while not rospy.is_shutdown():
-    	try:
+		try:
 			resp = assemble_scans(rospy.Time(0), rospy.Time.now())
 			cloud_pub.publish(resp.cloud)
 			loop_rate.sleep()
