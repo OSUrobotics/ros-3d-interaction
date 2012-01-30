@@ -1,0 +1,19 @@
+<package>
+  <description brief="world_intersect">
+
+     world_intersect
+
+  </description>
+  <author>Daniel Lazewatsky</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/world_intersect</url>
+  <depend package="roscpp"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+
+</package>
+
+
