@@ -13,7 +13,8 @@
   <depend package="pcl_ros"/>
   <depend package="geometry_msgs"/>
   <depend package="sensor_msgs"/>
-
+  <depend package="message_filters"/>
+  <depend package="tf"/>
 </package>
 
 
