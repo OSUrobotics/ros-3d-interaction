@@ -7,6 +7,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <pcl_ros/transforms.h>
 
 #include <ros/ros.h>
@@ -24,10 +25,39 @@ typedef std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ> > Ali
 
 ros::Publisher cloud_pub;
 tf::TransformListener* listener;
+tf::TransformBroadcaster* broadcaster;
 
 void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
 	sensor_msgs::PointCloud2 cloud_transformed;
-	pcl_ros::transformPointCloud(pose->header.frame_id, *cloud_msg, cloud_transformed, *listener);
+	std::string vector_frame = pose->header.frame_id;
+	ros::Time stamp = (cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
+
+
+	
+	if(!((pose->pose.position.x == 0) && (pose->pose.position.y) == 0 && (pose->pose.position.z == 0))) {
+		//ROS_WARN("Expecting point to be the origin of its coordinate frame, but it isn't");
+		tf::Transform trans;
+		trans.setOrigin(tf::Vector3(
+			pose->pose.position.x,
+			pose->pose.position.y,
+			pose->pose.position.z
+		));
+		trans.setRotation(tf::Quaternion(
+			pose->pose.orientation.x,
+			pose->pose.orientation.y,
+			pose->pose.orientation.z,
+			pose->pose.orientation.w
+		));
+		vector_frame = "intersected_vector";
+		broadcaster->sendTransform(tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame));
+	}
+	
+	listener->waitForTransform(cloud_msg->header.frame_id, vector_frame, stamp, ros::Duration(2.0));
+
+	//ROS_INFO("Transforming cloud to %s", vector_frame.c_str());
+	pcl_ros::transformPointCloud(vector_frame, *cloud_msg, cloud_transformed, *listener);
+	int tPoints = cloud_transformed.width*cloud_transformed.height;
+	if(tPoints == 0) return;
 	
 	PointCloud cloud;
 	pcl::fromROSMsg(cloud_transformed, cloud);
@@ -37,28 +67,22 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 	octree.setInputCloud(cloud.makeShared());
 	octree.addPointsFromInputCloud();
 	
-	if(!((pose->pose.position.x == 0) && (pose->pose.position.y) == 0 && (pose->pose.position.z == 0))) {
-		ROS_WARN("Expecting point to be the origin of its coordinate frame, but it isn't");
-		//TODO broadcast the frame corresponding to this pose?
-	}
-	Eigen::Vector3f    origin(pose->pose.position.x,        pose->pose.position.y, pose->pose.position.z);
-	Eigen::Vector3f direction(pose->pose.position.x + RAND_MAX, pose->pose.position.y + 0.0f, pose->pose.position.z + 0.0f);
-	//AlignedPointTVector voxelCenterList;
+	Eigen::Vector3f    origin(0, 0, 0);
+	Eigen::Vector3f direction(RAND_MAX, 0.0f, 0.0f);
 	std::vector<int> k_indices;
 	
-	//int nPoints = octree.getIntersectedVoxelCenters(origin, direction, voxelCenterList);
 	int nPoints = octree.getIntersectedVoxelIndices(origin, direction, k_indices);
-	ROS_INFO("vector intersected %d voxels", nPoints);
+	//ROS_INFO("vector intersected %d voxels", nPoints);
 	
 	
 	PointCloud::Ptr out (new PointCloud);
 	out->header.stamp = ros::Time::now();
-	out->header.frame_id = pose->header.frame_id;
+	out->header.frame_id = vector_frame;
 	for(int i=0; i<nPoints; i++) {
 		out->points.push_back(cloud.points[k_indices[i]]);
-		ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[i], cloud.points[k_indices[i]].x, cloud.points[k_indices[i]].y, cloud.points[k_indices[i]].z);
-
 	}
+	//ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[1], cloud.points[k_indices[1]].x, cloud.points[k_indices[1]].y, cloud.points[k_indices[1]].z);
+
 	cloud_pub.publish(out);
 }
 
@@ -66,9 +90,8 @@ int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "world_intersect");
 	ros::NodeHandle nh;
 	listener = new tf::TransformListener();
+	broadcaster = new tf::TransformBroadcaster();
     cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
-	// ros::Subscriber cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("cloud", 1, cloudCallback);
-	// ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("pt_in", 1, ptCallback);
 	message_filters::Subscriber<sensor_msgs::PointCloud2>   cloud_sub(nh, "cloud", 1);
 	message_filters::Subscriber<geometry_msgs::PoseStamped>   pose_sub(nh, "pose", 1);
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> ApproximatePolicy;
