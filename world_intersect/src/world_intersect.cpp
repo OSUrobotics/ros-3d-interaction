@@ -27,12 +27,14 @@ ros::Publisher cloud_pub;
 tf::TransformListener* listener;
 tf::TransformBroadcaster* broadcaster;
 
+// params
+double g_resolution;
+std::string g_vector_frame;
+
 void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
 	sensor_msgs::PointCloud2 cloud_transformed;
 	std::string vector_frame = pose->header.frame_id;
 	ros::Time stamp = (cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
-
-
 	
 	if(!((pose->pose.position.x == 0) && (pose->pose.position.y) == 0 && (pose->pose.position.z == 0))) {
 		//ROS_WARN("Expecting point to be the origin of its coordinate frame, but it isn't");
@@ -48,13 +50,11 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 			pose->pose.orientation.z,
 			pose->pose.orientation.w
 		));
-		vector_frame = "intersected_vector";
+		vector_frame = g_vector_frame;
 		broadcaster->sendTransform(tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame));
 	}
 	
 	listener->waitForTransform(cloud_msg->header.frame_id, vector_frame, stamp, ros::Duration(2.0));
-
-	//ROS_INFO("Transforming cloud to %s", vector_frame.c_str());
 	pcl_ros::transformPointCloud(vector_frame, *cloud_msg, cloud_transformed, *listener);
 	int tPoints = cloud_transformed.width*cloud_transformed.height;
 	if(tPoints == 0) return;
@@ -62,8 +62,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 	PointCloud cloud;
 	pcl::fromROSMsg(cloud_transformed, cloud);
 	
-	float resolution = 0.02f;
-	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree (resolution);
+	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree (g_resolution);
 	octree.setInputCloud(cloud.makeShared());
 	octree.addPointsFromInputCloud();
 	
@@ -73,7 +72,6 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 	
 	int nPoints = octree.getIntersectedVoxelIndices(origin, direction, k_indices);
 	//ROS_INFO("vector intersected %d voxels", nPoints);
-	
 	
 	PointCloud::Ptr out (new PointCloud);
 	out->header.stamp = ros::Time::now();
@@ -89,6 +87,11 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 int main(int argc, char* argv[]) {
 	ros::init(argc, argv, "world_intersect");
 	ros::NodeHandle nh;
+	
+	ros::NodeHandle pnh("~");
+	pnh.param("vector_frame",      g_vector_frame, std::string("intersected_vector"));
+	pnh.param("octree_resolution", g_resolution,   0.02);
+	
 	listener = new tf::TransformListener();
 	broadcaster = new tf::TransformBroadcaster();
     cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
