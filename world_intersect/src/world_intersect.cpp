@@ -5,6 +5,7 @@
 #include <pcl/filters/extract_indices.h>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
@@ -24,6 +25,7 @@ typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 typedef std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ> > AlignedPointTVector;
 
 ros::Publisher cloud_pub;
+ros::Publisher point_pub;
 tf::TransformListener* listener;
 tf::TransformBroadcaster* broadcaster;
 
@@ -82,6 +84,15 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 	//ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[1], cloud.points[k_indices[1]].x, cloud.points[k_indices[1]].y, cloud.points[k_indices[1]].z);
 
 	cloud_pub.publish(out);
+
+	if(nPoints > 0) {
+		geometry_msgs::PointStamped pt;
+		pt.header = out->header;
+		pt.point.x = out->points[0].x;
+		pt.point.y = out->points[0].y;
+		pt.point.z = out->points[0].z;
+		point_pub.publish(pt);
+	}
 }
 
 int main(int argc, char* argv[]) {
@@ -95,6 +106,7 @@ int main(int argc, char* argv[]) {
 	listener = new tf::TransformListener();
 	broadcaster = new tf::TransformBroadcaster();
     cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
+    point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
 	message_filters::Subscriber<sensor_msgs::PointCloud2>   cloud_sub(nh, "cloud", 1);
 	message_filters::Subscriber<geometry_msgs::PoseStamped>   pose_sub(nh, "pose", 1);
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> ApproximatePolicy;
