@@ -21,6 +21,18 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
+
+template <typename T>
+class NeverEmptyQueue : public std::queue<T>
+{
+	public:
+		virtual void pop() {
+			if(this->size() > 1) std::queue<T>::pop();
+		} 
+};
+
+
+
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 typedef std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ> > AlignedPointTVector;
 
@@ -29,11 +41,29 @@ ros::Publisher point_pub;
 tf::TransformListener* listener;
 tf::TransformBroadcaster* broadcaster;
 
+sensor_msgs::PointCloud2ConstPtr   g_cloud;
+geometry_msgs::PoseStampedConstPtr g_pose;
+
+bool g_cloud_ready = false;
+bool g_pose_ready  = false;
+
+NeverEmptyQueue<sensor_msgs::PointCloud2ConstPtr> g_cloud_queue;
+NeverEmptyQueue<geometry_msgs::PoseStampedConstPtr> g_pose_queue;
+
 // params
 double g_resolution;
 std::string g_vector_frame;
 
-void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
+void cloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
+	g_cloud_queue.push(cloud_msg);
+}
+
+void poseCallback(const geometry_msgs::PoseStampedConstPtr& pose) {
+	g_pose_queue.push(pose);
+}
+
+// void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
+void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
 	sensor_msgs::PointCloud2 cloud_transformed;
 	std::string vector_frame = pose->header.frame_id;
 	ros::Time stamp = (cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
@@ -84,7 +114,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_
 	//ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[1], cloud.points[k_indices[1]].x, cloud.points[k_indices[1]].y, cloud.points[k_indices[1]].z);
 
 	cloud_pub.publish(out);
-
+	
 	if(nPoints > 0) {
 		geometry_msgs::PointStamped pt;
 		pt.header = out->header;
@@ -107,11 +137,30 @@ int main(int argc, char* argv[]) {
 	broadcaster = new tf::TransformBroadcaster();
     cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
     point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
-	message_filters::Subscriber<sensor_msgs::PointCloud2>   cloud_sub(nh, "cloud", 1);
-	message_filters::Subscriber<geometry_msgs::PoseStamped>   pose_sub(nh, "pose", 1);
-	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> ApproximatePolicy;
-	message_filters::Synchronizer<ApproximatePolicy> sync(ApproximatePolicy(10), cloud_sub, pose_sub);
-	sync.registerCallback(boost::bind(&callback, _1, _2));
+
+	ros::Subscriber cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("cloud", 1, cloudCallback);
+	ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("pose", 1, poseCallback);
+	
+	ros::Rate rate(10);
+	while(((g_cloud_queue.size() == 0) || (g_pose_queue.size() == 0)) && ros::ok()) {
+		ros::spinOnce();
+		rate.sleep();
+	}
+
+	while(ros::ok()) {
+		//sensor_msgs::PointCloud2ConstPtr& c = g_cloud_queue.front();
+		intersectPose(g_cloud_queue.front(), g_pose_queue.front());
+		g_cloud_queue.pop();
+		g_pose_queue.pop();
+		ros::spinOnce();
+		rate.sleep();
+	}
+	
+	// message_filters::Subscriber<sensor_msgs::PointCloud2>   cloud_sub(nh, "cloud", 1);
+	// message_filters::Subscriber<geometry_msgs::PoseStamped>   pose_sub(nh, "pose", 1);
+	// typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> ApproximatePolicy;
+	// message_filters::Synchronizer<ApproximatePolicy> sync(ApproximatePolicy(10), cloud_sub, pose_sub);
+	// sync.registerCallback(boost::bind(&intersectPose, _1, _2));
 		
-	ros::spin();
+	//ros::spin();
 }
