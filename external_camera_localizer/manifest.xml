@@ -8,7 +8,7 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/external_camera_localizer</url>
-  <depend package="ar_pose"/>
+  <!--depend package="ar_pose"/-->
   <depend package="tf"/>
   <depend package="sensor_msgs"/>
   <depend package="pcl"/>

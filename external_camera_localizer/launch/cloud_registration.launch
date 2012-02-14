@@ -4,7 +4,7 @@
     name="laser_cmd"
     args="laser_tilt_controller linear 10 1 .35" />
 	
-  <node type="laser_scan_assembler" pkg="laser_assembler" name="tilt_scan_assembler">
+  <node type="laser_scan_assembler" pkg="laser_assembler" name="tilt_scan_assembler" respawn="true">
     <remap from="scan" to="tilt_scan"/>
     <param name="max_scans" type="int" value="400" />
     <param name="fixed_frame" type="string" value="$(arg fixed_frame)" />
