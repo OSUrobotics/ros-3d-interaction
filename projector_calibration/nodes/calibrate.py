@@ -55,18 +55,24 @@ class CalibrationGrid(QtGui.QWidget):
 		else:
 			square = self.width/self.nCols - 2*self.padding/self.nCols
 			
+		grid_size_rows = square * self.nRows + 2 * self.padding
+		grid_size_cols = square * self.nCols + 2 * self.padding
+		
+		row_offset = (self.height - grid_size_rows) / 2
+		col_offset = (self.width  - grid_size_cols) / 2
+		
 		del self.corners[:]
 		for row in range(self.nRows):
-			top = row*square + self.padding
+			top = row*square + self.padding + row_offset
 			for col in range(self.nCols):			
-				left = col*square + self.padding
+				left = col*square + self.padding + col_offset
 				self.corners.append((top+square, left+square))
 				color = QtGui.QColor(*(cref*black))
 				qp.setPen(color)
 				qp.setBrush(color)
 				qp.drawRect(left, top, square, square)
 			
-				black = (not black)	
+				black = (not black) 
 		
 def main():
 	app = QtGui.QApplication(sys.argv)
