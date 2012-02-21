@@ -6,7 +6,7 @@ from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 import numpy as np
 class CalibrationGrid(QtGui.QWidget):
-	_width = 500
+	_width = 700
 	_height = 500
 	nCols = 5
 	nRows = 5
@@ -38,10 +38,7 @@ class CalibrationGrid(QtGui.QWidget):
 		qp.begin(self)
 		self.drawRectangles(qp)
 		qp.end()
-		
-	# def resizeEvent(self, e):
-		# import pdb; pdb.set_trace()
-		
+				
 	def keyPressEvent(self, e):
 		if e.key() == 16777216:
 			sys.exit(0)
@@ -74,10 +71,26 @@ class CalibrationGrid(QtGui.QWidget):
 			
 				black = (not black) 
 		
+	def getPatternAsImage(self, im_type='PIL'):
+		pixmap = QtGui.QPixmap.grabWidget(self)
+		qimage = pixmap.toImage()
+		if im_type == 'PIL':
+			import Image
+			pil_im = Image.frombuffer('RGBA', (self.width, self.height), qimage.bits(), 'raw', 'RGBA', 0, 1).convert('L')
+			return pil_im
+		elif im_type == 'OPENCV':
+			import cv
+			cv_im = cv.CreateImageHeader((self.width, self.height), cv.IPL_DEPTH_8U, 4)
+			cv.SetData(cv_im, qimage.bits())
+			print np.asarray(qimage.bits())
+			return cv_im
+		
 def main():
 	app = QtGui.QApplication(sys.argv)
 	grid = CalibrationGrid()
-	grid.showFullScreen()
+	# grid.showFullScreen()
+	print grid.getPatternAsImage(im_type='OPENCV')
+	
 	sys.exit(app.exec_())
 
 
