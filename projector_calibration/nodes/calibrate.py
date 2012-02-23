@@ -1,98 +1,78 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
+#!/usr/bin/env python
+import roslib; roslib.load_manifest('projector_calibration')
+from projector_calibration import CalibrationGrid
+import rospy
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+import PySide
 import sys
-from PySide import QtGui, QtCore
-from PySide.QtGui import QPalette
+from functools import partial
 import numpy as np
-class CalibrationGrid(QtGui.QWidget):
-	_width = 700
-	_height = 500
-	nCols = 5
-	nRows = 5
-	padding = 50
-	corners = []
-	def __init__(self):
-		super(CalibrationGrid, self).__init__()
-		
-		self.initUI()
-		
-	@property
-	def width(self):
-		return self.size().width()
+bridge = CvBridge()
 
-	@property
-	def height(self):
-		return self.size().height()
-		
-	def initUI(self):	   
-		p = QPalette()
-		p.setColor(QPalette.Background, QtGui.QColor(255,255,255))
-		self.setPalette(p)
-		self.setGeometry(0, 0, self._width, self._height)
-		self.setWindowTitle('Projector Calibration')
-		self.show()
+import cv
 
-	def paintEvent(self, e):
-		qp = QtGui.QPainter()
-		qp.begin(self)
-		self.drawRectangles(qp)
-		qp.end()
-				
-	def keyPressEvent(self, e):
-		if e.key() == 16777216:
-			sys.exit(0)
-		
-	def drawRectangles(self, qp):
-		black = False
-		cref = np.array((255,255,255))
-		square = None
-		if self.height < self.width:
-			square = self.height/self.nRows - 2*self.padding/self.nRows
-		else:
-			square = self.width/self.nCols - 2*self.padding/self.nCols
-			
-		grid_size_rows = square * self.nRows + 2 * self.padding
-		grid_size_cols = square * self.nCols + 2 * self.padding
-		
-		row_offset = (self.height - grid_size_rows) / 2
-		col_offset = (self.width  - grid_size_cols) / 2
-		
-		del self.corners[:]
-		for row in range(self.nRows):
-			top = row*square + self.padding + row_offset
-			for col in range(self.nCols):			
-				left = col*square + self.padding + col_offset
-				self.corners.append((top+square, left+square))
-				color = QtGui.QColor(*(cref*black))
-				qp.setPen(color)
-				qp.setBrush(color)
-				qp.drawRect(left, top, square, square)
-			
-				black = (not black) 
-		
-	def getPatternAsImage(self, im_type='PIL'):
-		pixmap = QtGui.QPixmap.grabWidget(self)
-		qimage = pixmap.toImage()
-		if im_type == 'PIL':
-			import Image
-			pil_im = Image.frombuffer('RGBA', (self.width, self.height), qimage.bits(), 'raw', 'RGBA', 0, 1).convert('L')
-			return pil_im
-		elif im_type == 'OPENCV':
-			import cv
-			cv_im = cv.CreateImageHeader((self.width, self.height), cv.IPL_DEPTH_8U, 4)
-			cv.SetData(cv_im, qimage.bits())
-			print np.asarray(qimage.bits())
-			return cv_im
-		
-def main():
-	app = QtGui.QApplication(sys.argv)
-	grid = CalibrationGrid()
-	# grid.showFullScreen()
-	print grid.getPatternAsImage(im_type='OPENCV')
+image = None
+calib_im = None
+
+class Calibrator(object):
+	def publish_image(self, grid_pub):
+		im = self.grid.getPatternAsImage(im_type='OPENCV')
+
+		msg = bridge.cv_to_imgmsg(self.removeAlpha(im), 'rgb8')
+		msg.header.stamp = rospy.Time.now()
+		grid_pub.publish(msg)
+
+	def removeAlpha(self, im):
+		r = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
+		g = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
+		b = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
+		cv.Split(im,r,g,b,None)
+		imrgb = cv.CreateMat(im.height, im.width, cv.CV_8UC3)
+		cv.Merge(r,g,b,None,imrgb)
+		return imrgb
+
+	def get_projector_grid(self):
+		PySide.QtCore.QTimer.singleShot(0, self.grid, self.printhello)
 	
-	sys.exit(app.exec_())
-
+	def printhello(self):
+		print 'hello'
+	
+	def calibrate(self, e):
+		print 'calibrate'
+		# TODO wait until we can detect a checkerboard
+		while not image:
+			rospy.sleep(0.1)
+			print 'waiting'
+		print 'ready'
+		# self.get_projector_grid()
+		# print self.grid.getPatternAsImage(im_type='OPENCV')
+		im1 = bridge.imgmsg_to_cv(image)
+		im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
+		corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
+		corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
+		
+		import pprint
+		f = cv.CreateMat(3, 3, cv.CV_32FC1)
+		cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
+		pprint.pprint(np.asarray(f))
+		
+	def image_cb(self, msg):
+		global image
+		image = msg
+	
+	def __init__(self):
+		rospy.init_node('grid')
+		rospy.Subscriber('grid', Image, self.image_cb)
+		grid_pub = rospy.Publisher('grid', Image)
+		app = PySide.QtGui.QApplication(sys.argv)
+		self.grid = CalibrationGrid()
+		self.grid.addKeyHandler(67, self.calibrate)
+		# self.grid.showFullScreen()
+		timer = PySide.QtCore.QTimer(self.grid)
+		self.grid.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
+		timer.start(100)
+		sys.exit(app.exec_())
 
 if __name__ == '__main__':
-	main()
+	Calibrator()

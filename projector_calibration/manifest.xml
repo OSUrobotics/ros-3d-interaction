@@ -10,7 +10,9 @@
   <url>http://ros.org/wiki/projector_calibration</url>
   <depend package="rospy"/>
   <depend package="opencv2"/>
-
+  <depend package="sensor_msgs"/>
+  <depend package="cv_bridge"/>
+  <rosdep name="pyside"/>
 </package>
 
 
