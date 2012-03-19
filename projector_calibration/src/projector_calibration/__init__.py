@@ -5,16 +5,15 @@ import numpy as np
 class CalibrationGrid(QtGui.QWidget):
 	_width = 700
 	_height = 500
-	nCols = 5
-	nRows = 5
 	padding = 50
 	corners = []
 	
 	key_handlers = dict()
 	
-	def __init__(self):
+	def __init__(self, nRows=5, nCols=5):
 		super(CalibrationGrid, self).__init__()
-		
+		self.nRows = nRows
+		self.nCols = nCols
 		self.initUI()
 		
 	@property

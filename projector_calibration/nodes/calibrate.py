@@ -5,6 +5,7 @@ import rospy
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import PySide
+import PySide.QtCore
 import sys
 from functools import partial
 import numpy as np
@@ -12,10 +13,10 @@ bridge = CvBridge()
 
 import cv
 
-image = None
 calib_im = None
 
 class Calibrator(object):
+	image = None
 	def publish_image(self, grid_pub):
 		im = self.grid.getPatternAsImage(im_type='OPENCV')
 
@@ -41,13 +42,13 @@ class Calibrator(object):
 	def calibrate(self, e):
 		print 'calibrate'
 		# TODO wait until we can detect a checkerboard
-		while not image:
+		while not self.image and not rospy.is_shutdown():
 			rospy.sleep(0.1)
 			print 'waiting'
 		print 'ready'
 		# self.get_projector_grid()
 		# print self.grid.getPatternAsImage(im_type='OPENCV')
-		im1 = bridge.imgmsg_to_cv(image)
+		im1 = bridge.imgmsg_to_cv(self.image)
 		im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
 		corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
@@ -58,20 +59,20 @@ class Calibrator(object):
 		pprint.pprint(np.asarray(f))
 		
 	def image_cb(self, msg):
-		global image
-		image = msg
+		self.image = msg
 	
 	def __init__(self):
 		rospy.init_node('grid')
-		rospy.Subscriber('grid', Image, self.image_cb)
+		rospy.Subscriber('image', Image, self.image_cb)
 		grid_pub = rospy.Publisher('grid', Image)
 		app = PySide.QtGui.QApplication(sys.argv)
-		self.grid = CalibrationGrid()
+		self.grid = CalibrationGrid(nCols=9)
 		self.grid.addKeyHandler(67, self.calibrate)
-		# self.grid.showFullScreen()
-		timer = PySide.QtCore.QTimer(self.grid)
-		self.grid.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
-		timer.start(100)
+		self.grid.showFullScreen()
+		#self.grid.setCursor(PySide.QtGui.QCursor(PySide.QtCore.Qt.BlankCursor))
+		#timer = PySide.QtCore.QTimer(self.grid)
+		#self.grid.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
+		#timer.start(100)
 		sys.exit(app.exec_())
 
 if __name__ == '__main__':
