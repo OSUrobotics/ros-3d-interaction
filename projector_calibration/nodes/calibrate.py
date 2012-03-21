@@ -39,7 +39,7 @@ class Calibrator(object):
 	def printhello(self):
 		print 'hello'
 	
-	def calibrate(self, e):
+	def calibrate(self, *args):
 		print 'calibrate'
 		# TODO wait until we can detect a checkerboard
 		while not self.image and not rospy.is_shutdown():
@@ -50,14 +50,17 @@ class Calibrator(object):
 		# print self.grid.getPatternAsImage(im_type='OPENCV')
 		im1 = bridge.imgmsg_to_cv(self.image)
 		#im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
-		corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
+		#corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
+		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
 		#corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
 		corners2 = np.array(self.grid.corners, dtype=np.float32)
 
 		from pprint import pprint
-		retval, mask = cv2.findHomography(np.array(corners1[1], dtype=np.float32), corners2, method=cv2.RANSAC)
-		pprint(retval)
-		#import pdb; pdb.set_trace()
+		H, mask = cv2.findHomography(np.array(corners1[1], dtype=np.float32), corners2, method=cv2.RANSAC)
+		pprint(H)
+		c1 = np.array([corners1[1]])
+		c2 = np.array([corners2])
+		import pdb; pdb.set_trace()
 		#f = cv.CreateMat(3, 3, cv.CV_32FC1)
 		#cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
 		#pprint(np.asarray(f))
@@ -73,6 +76,7 @@ class Calibrator(object):
 		self.grid = CalibrationGrid(nCols=9)
 		self.grid.addKeyHandler(67, self.calibrate)
 		self.grid.showFullScreen()
+		PySide.QtCore.QTimer.singleShot(1000, self.calibrate)
 		#self.grid.setCursor(PySide.QtGui.QCursor(PySide.QtCore.Qt.BlankCursor))
 		#timer = PySide.QtCore.QTimer(self.grid)
 		#self.grid.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
