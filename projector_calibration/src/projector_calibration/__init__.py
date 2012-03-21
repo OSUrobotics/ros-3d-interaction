@@ -70,7 +70,8 @@ class CalibrationGrid(QtGui.QWidget):
 			top = row*square + self.padding + row_offset
 			for col in range(self.nCols):			
 				left = col*square + self.padding + col_offset
-				self.corners.append((top+square, left+square))
+				if (col < self.nCols - 1) and (row < self.nRows - 1):
+					self.corners.append((top+square, left+square))
 				color = QtGui.QColor(*(cref*black))
 				qp.setPen(color)
 				qp.setBrush(color)

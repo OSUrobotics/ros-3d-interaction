@@ -11,7 +11,7 @@ from functools import partial
 import numpy as np
 bridge = CvBridge()
 
-import cv
+import cv, cv2
 
 calib_im = None
 
@@ -49,14 +49,18 @@ class Calibrator(object):
 		# self.get_projector_grid()
 		# print self.grid.getPatternAsImage(im_type='OPENCV')
 		im1 = bridge.imgmsg_to_cv(self.image)
-		im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
+		#im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
-		corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
-		
-		import pprint
-		f = cv.CreateMat(3, 3, cv.CV_32FC1)
-		cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
-		pprint.pprint(np.asarray(f))
+		#corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
+		corners2 = np.array(self.grid.corners, dtype=np.float32)
+
+		from pprint import pprint
+		retval, mask = cv2.findHomography(np.array(corners1[1], dtype=np.float32), corners2, method=cv2.RANSAC)
+		pprint(retval)
+		#import pdb; pdb.set_trace()
+		#f = cv.CreateMat(3, 3, cv.CV_32FC1)
+		#cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
+		#pprint(np.asarray(f))
 		
 	def image_cb(self, msg):
 		self.image = msg
