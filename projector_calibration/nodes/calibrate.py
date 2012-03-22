@@ -68,6 +68,7 @@ class Calibrator(object):
 		#f = cv.CreateMat(3, 3, cv.CV_32FC1)
 		#cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
 		#pprint(np.asarray(f))
+		self.grid.hide()
 		
 	def image_cb(self, msg):
 		self.image = msg
