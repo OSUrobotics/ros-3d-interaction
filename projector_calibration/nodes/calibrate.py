@@ -60,8 +60,8 @@ class Calibrator(object):
 		from pprint import pprint
 		H, mask = cv2.findHomography(np.array(corners1[1], dtype=np.float32), corners2, method=cv2.RANSAC)
 		pprint(H)
-        homography_pub.publish(H.flatten())
-        
+		self.homography_pub.publish(H.flatten())
+
 		c1 = np.array([corners1[1]])
 		c2 = np.array([corners2])
         # import pdb; pdb.set_trace()
@@ -76,9 +76,9 @@ class Calibrator(object):
 		rospy.init_node('grid')
 		rospy.Subscriber('image', Image, self.image_cb)
 		grid_pub = rospy.Publisher('grid', Image)
-        self.homography_pub = rospy.Publisher('homography', numpy_msg(Homography))
+		self.homography_pub = rospy.Publisher('homography', numpy_msg(Homography), latch=True)
 		app = PySide.QtGui.QApplication(sys.argv)
-		self.grid = CalibrationGrid(nCols=9)
+		self.grid = CalibrationGrid(nCols=7)
 		self.grid.addKeyHandler(67, self.calibrate)
 		self.grid.showFullScreen()
 		PySide.QtCore.QTimer.singleShot(1000, self.calibrate)
