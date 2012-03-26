@@ -1,0 +1,19 @@
+<package>
+  <description brief="projector_interface">
+
+     projector_interface
+
+  </description>
+  <author>Lazewatsky Daniel</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/projector_interface</url>
+  <depend package="rospy"/>
+  <depend package="projector_calibration"/>
+  <depend package="cv_bridge"/>
+  <depend package="tf"/>
+  <depend package="sensor_msgs"/>
+
+</package>
+
+
