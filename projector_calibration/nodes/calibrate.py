@@ -35,12 +35,6 @@ class Calibrator(object):
 		cv.Merge(r,g,b,None,imrgb)
 		return imrgb
 
-	def get_projector_grid(self):
-		PySide.QtCore.QTimer.singleShot(0, self.grid, self.printhello)
-	
-	def printhello(self):
-		print 'hello'
-	
 	def calibrate(self, *args):
 		print 'calibrate'
 		# TODO wait until we can detect a checkerboard
@@ -48,13 +42,8 @@ class Calibrator(object):
 			rospy.sleep(0.1)
 			print 'waiting'
 		print 'ready'
-		# self.get_projector_grid()
-		# print self.grid.getPatternAsImage(im_type='OPENCV')
 		im1 = bridge.imgmsg_to_cv(self.image)
-		#im2 = self.removeAlpha(self.grid.getPatternAsImage(im_type='OPENCV'))
-		#corners1 = cv.FindChessboardCorners(im1, (self.grid.nRows-1, self.grid.nCols-1))
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
-		#corners2 = cv.FindChessboardCorners(im2, (self.grid.nRows-1, self.grid.nCols-1))
 		corners2 = np.array(self.grid.corners, dtype=np.float32)
 
 		from pprint import pprint
@@ -64,14 +53,16 @@ class Calibrator(object):
 
 		c1 = np.array([corners1[1]])
 		c2 = np.array([corners2])
-        # import pdb; pdb.set_trace()
+		err = cv2.perspectiveTransform(c1,H) - c2
 		#f = cv.CreateMat(3, 3, cv.CV_32FC1)
 		#cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
-		#pprint(np.asarray(f))
 		self.grid.hide()
 		
 	def image_cb(self, msg):
 		self.image = msg
+
+	def maybe_shutdown(self):
+		if rospy.is_shutdown(): sys.exit(0)
 	
 	def __init__(self):
 		rospy.init_node('grid')
@@ -82,6 +73,9 @@ class Calibrator(object):
 		self.grid = CalibrationGrid(nCols=7)
 		self.grid.addKeyHandler(67, self.calibrate)
 		self.grid.showFullScreen()
+		qtimer = PySide.QtCore.QTimer(self.grid)
+		qtimer.timeout.connect(self.maybe_shutdown)
+		qtimer.start()
 		PySide.QtCore.QTimer.singleShot(1000, self.calibrate)
 		#self.grid.setCursor(PySide.QtGui.QCursor(PySide.QtCore.Qt.BlankCursor))
 		#timer = PySide.QtCore.QTimer(self.grid)

@@ -11,6 +11,7 @@ import PySide
 from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 import sys
+from math import hypot
 
 class Circler(QtGui.QWidget):
 	H = None
@@ -22,7 +23,7 @@ class Circler(QtGui.QWidget):
 	def initUI(self):
 		#self.addKeyHandler(16777216, self.escHandler)
 		p = QPalette()
-		p.setColor(QPalette.Background, QtGui.QColor(255,255,255))
+		p.setColor(QPalette.Background, QtGui.QColor(0,0,0))
 		self.setPalette(p)
 		self.showFullScreen()
 
@@ -32,6 +33,22 @@ class Circler(QtGui.QWidget):
 
 	def roi_cb(self, msg):
 		self.roi = msg
+
+	def paintEvent(self, e):
+		if rospy.is_shutdown(): sys.exit()
+		if self.roi is not None:
+			pts = np.float64([[(self.roi.x_offset, self.roi.y_offset)]])
+			xformed = cv2.perspectiveTransform(pts, self.H)
+			r = 15
+			qp = QtGui.QPainter()
+			qp.begin(self)
+			color = QtGui.QColor(255,255,255)
+			qp.setPen(color)
+			qp.setBrush(color)
+			rect = QtCore.QRectF(xformed[:,:,1]-r/2, xformed[:,:,0]-r/2, r, r)
+			qp.drawArc(rect, 0, 360*16)
+			qp.end()
+
 
 	def __init__(self):
 		super(Circler, self).__init__()
@@ -43,6 +60,10 @@ class Circler(QtGui.QWidget):
 		print self.H
 		self.initUI()
 		rospy.Subscriber('roi', RegionOfInterest, self.roi_cb)
+		timer = PySide.QtCore.QTimer(self)
+		#self.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
+		timer.timeout.connect(self.update)
+		timer.start()
 		sys.exit(app.exec_())
 		rospy.spin()
 
