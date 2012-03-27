@@ -1,0 +1,17 @@
+<launch>
+  <include file="$(find external_camera_localizer)/launch/cloud_registration.launch">
+    <arg name="fixed_frame" value="base_link"/>
+  </include>
+  <!--include file="$(find tabletop_object_detector)/launch/tabletop_segmentation.launch">
+    <arg name="tabletop_segmentation_points_in" value="laser_cloud_converted"/>  
+  </include-->
+
+  <include file="$(find projector_interface)/launch/pr2_tabletop_manipulation.launch">
+    <arg name="tabletop_segmentation_points_in" value="laser_cloud_converted"/>  
+  </include>
+
+  <!--
+  in rosh: detection = services.tabletop_segmentation()
+  -->
+
+</launch>
