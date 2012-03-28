@@ -13,8 +13,10 @@
   <depend package="cv_bridge"/>
   <depend package="tf"/>
   <depend package="sensor_msgs"/>
+  <depend package="geometry_msgs"/>
   <depend package="pr2_pick_and_place_demos"/>
   <depend package="object_manipulator"/>
+  <depend package="image_geometry"/>
 
 </package>
 
