@@ -9,8 +9,11 @@
   <include file="$(find projector_interface)/launch/pr2_tabletop_manipulation.launch">
     <arg name="tabletop_segmentation_points_in" value="laser_cloud_converted"/>  
   </include>
-
+  <node pkg="projector_interface" type="find_objects.py" name="find_objects"/>
+  
+  <!-- <node pkg="dynamic_reconfigure" name="dynparam" args="set /camera_synchronizer_node projector_mode 1"/> -->
   <!--
+  rosrun dynamic_reconfigure dynparam set /camera_synchronizer_node projector_mode 1
   in rosh: detection = services.tabletop_segmentation()
   -->
 
