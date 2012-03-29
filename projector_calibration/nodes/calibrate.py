@@ -66,11 +66,13 @@ class Calibrator(object):
 	
 	def __init__(self):
 		rospy.init_node('grid')
+		rows, cols = [int(n) for n in rospy.get_param('~grid_size', default='5x7').split('x')]
+		print rows, cols
 		rospy.Subscriber('image', Image, self.image_cb)
 		grid_pub = rospy.Publisher('grid', Image)
 		self.homography_pub = rospy.Publisher('homography', numpy_msg(Homography), latch=True)
 		app = PySide.QtGui.QApplication(sys.argv)
-		self.grid = CalibrationGrid(nCols=7)
+		self.grid = CalibrationGrid(nCols=cols, nRows=rows)
 		self.grid.addKeyHandler(67, self.calibrate)
 		self.grid.showFullScreen()
 		qtimer = PySide.QtCore.QTimer(self.grid)
