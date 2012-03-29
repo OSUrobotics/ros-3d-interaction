@@ -41,31 +41,52 @@ class Circler(QtGui.QWidget):
 		tmp_model = image_geometry.PinholeCameraModel()
 		tmp_model.fromCameraInfo(info)
 		self.model = tmp_model
+		self.camera_stamp = info.header.stamp
 		self.camera_frame = info.header.frame_id
 
 	def object_cb(self, msg):
-		self.objects = read_points_np(msg, masked=False)
+		objects = read_points_np(msg, masked=False)
 		self.object_header = msg.header
+		self.objects = objects
+		transformed_objects = self.projectPoints(self.objects)
+		# print 'projected   ==>\n', transformed_objects
+		self.projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
+		# print 'transformed ==>\n', self.projected_objects
+		# print self.objects.shape
+		# print self.objects
+		# print self.projected_objects
+		
 
-	def projectPoints(points):
+	def projectPoints(self, points):
 		pts_out = []
-		for point in points:
+		print 'points.shape is', points.shape
+		for point in points[0]:
+			# print '-->', point
 			pt = PointStamped()
+			pt.point.x, pt.point.y, pt.point.z = point.tolist()
+			stamp = self.tfl.getLatestCommonTime(self.camera_frame, self.object_header.frame_id)
 			pt.header = self.object_header
+			pt.header.stamp = stamp
+			# first, transform the point into the camera frame
 			pt_out = self.tfl.transformPoint(self.camera_frame, pt).point
-			pts_out.append(self.model.project3dToPixel(pt_out.x, pt_out.y, pt_out.z))
-		return np.array(pts_out)
+			# print self.tfl.transformPoint(self.camera_frame, pt)
+			# project it onto the image plane
+			px = self.model.project3dToPixel((pt_out.x, pt_out.y, pt_out.z))
+			pts_out.append(px)
+		return np.array([pts_out])
 			
-
 	def paintEvent(self, e):
 		if rospy.is_shutdown(): sys.exit()
-		
+        # print 'there are', len(self.objects), 'objects'
+		print '-------------------'
 		if self.objects is not None:
-			transformed_objects = self.transformPoints(self.objects)
-			projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
-			for xformed in projected_objects:				 
+			print self.projected_objects.shape
+			for xformed in self.projected_objects[0]:
 				# pts = np.float64([[(self.roi.x_offset, self.roi.y_offset)]])
-				xformed = cv2.perspectiveTransform(pts, self.H)
+				# xformed = cv2.perspectiveTransform(pts, self.H)
+				# print xformed
+				# sys.exit(0)
+				print 'circle at', xformed
 				r = 150
 				qp = QtGui.QPainter()
 				qp.begin(self)
@@ -74,7 +95,7 @@ class Circler(QtGui.QWidget):
 				pen = qp.pen()
 				pen.setWidth(5)
 				qp.setPen(pen)
-				rect = QtCore.QRectF(xformed[:,:,1]-r/2, xformed[:,:,0]-r/2, r, r)
+				rect = QtCore.QRectF(xformed[0]-r/2, xformed[1]-r/2, r, r)
 				qp.drawArc(rect, 0, 360*16)
 				qp.end()
 
