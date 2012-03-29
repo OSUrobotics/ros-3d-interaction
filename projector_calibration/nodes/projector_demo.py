@@ -39,12 +39,17 @@ class Circler(QtGui.QWidget):
 		if self.roi is not None:
 			pts = np.float64([[(self.roi.x_offset, self.roi.y_offset)]])
 			xformed = cv2.perspectiveTransform(pts, self.H)
-			r = 15
+			r = 150
 			qp = QtGui.QPainter()
 			qp.begin(self)
 			color = QtGui.QColor(255,255,255)
 			qp.setPen(color)
-			qp.setBrush(color)
+			pen = qp.pen()
+			pen.setWidth(5)
+			qp.setPen(pen)
+            # from pprint import pprint as pp
+            # pp(dir(qp))
+            # sys.exit(0)
 			rect = QtCore.QRectF(xformed[:,:,1]-r/2, xformed[:,:,0]-r/2, r, r)
 			qp.drawArc(rect, 0, 360*16)
 			qp.end()
