@@ -50,7 +50,10 @@ class Circler(QtGui.QWidget):
 		self.objects = objects
 		transformed_objects = self.projectPoints(self.objects)
 		# print 'projected   ==>\n', transformed_objects
+		print transformed_objects
+		print self.H.shape
 		self.projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
+		print '=======object_cb======='
 		# print 'transformed ==>\n', self.projected_objects
 		# print self.objects.shape
 		# print self.objects
@@ -78,9 +81,8 @@ class Circler(QtGui.QWidget):
 	def paintEvent(self, e):
 		if rospy.is_shutdown(): sys.exit()
         # print 'there are', len(self.objects), 'objects'
-		print '-------------------'
-		if self.objects is not None:
-			print self.projected_objects.shape
+		#print '-------------------'
+		if self.objects is not None and len(self.objects) > 0:
 			for xformed in self.projected_objects[0]:
 				# pts = np.float64([[(self.roi.x_offset, self.roi.y_offset)]])
 				# xformed = cv2.perspectiveTransform(pts, self.H)
@@ -95,7 +97,7 @@ class Circler(QtGui.QWidget):
 				pen = qp.pen()
 				pen.setWidth(5)
 				qp.setPen(pen)
-				rect = QtCore.QRectF(xformed[0]-r/2, xformed[1]-r/2, r, r)
+				rect = QtCore.QRectF(800-xformed[1]-r/2, 600-xformed[0]-r/2, r, r)
 				qp.drawArc(rect, 0, 360*16)
 				qp.end()
 
