@@ -46,16 +46,19 @@ class Calibrator(object):
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
 		corners2 = np.array(self.grid.corners, dtype=np.float32)
 
-		from pprint import pprint
-		H, mask = cv2.findHomography(np.array(corners1[1], dtype=np.float32), corners2, method=cv2.RANSAC)
-		pprint(H)
-		self.homography_pub.publish(H.flatten())
+		if np.asarray(corners1[1]).shape == corners2.shape:
+			from pprint import pprint
+			H, mask = cv2.findHomography(np.float32(corners1[1]), corners2, method=cv2.RANSAC)
+			pprint(H)
+			self.homography_pub.publish(H.flatten())
 
-		c1 = np.array([corners1[1]])
-		c2 = np.array([corners2])
-		err = cv2.perspectiveTransform(c1,H) - c2
-		#f = cv.CreateMat(3, 3, cv.CV_32FC1)
-		#cv.FindFundamentalMat(cv.fromarray(np.array(corners1[1])), cv.fromarray(np.array(corners2[1])), f)
+			c1 = np.array([corners1[1]])
+			c2 = np.array([corners2])
+			err = cv2.perspectiveTransform(c1,H) - c2
+		else:
+			if rospy.is_shutdown(): return
+			rospy.logwarn('Wrong number of corners. Is there something obstructing the calibration grid?')
+			self.calibrate()
 		self.grid.hide()
 		
 	def image_cb(self, msg):
