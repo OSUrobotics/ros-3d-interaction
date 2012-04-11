@@ -1,4 +1,5 @@
 <launch>
+	<env name="DISPLAY" value=":0"/>
 	<node name="calibrate_projector" type="calibrate.py" pkg="projector_calibration">
 		<remap from="image" to="/wide_stereo/right/image_rect"/>
 		<param name="grid_size" value="5x7"/>
