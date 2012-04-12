@@ -1,7 +1,9 @@
 <launch>
-  <node name="world_intersect" type="world_intersect" pkg="world_intersect">
-    <remap from="cloud" to="laser_cloud_converted"/>
+  <arg name="cloud_to_intersect" default="laser_cloud_converted"/>
+  <node name="world_intersect" type="world_intersect" pkg="world_intersect" output="screen">
+    <remap from="cloud" to="$(arg cloud_to_intersect)"/>
     <remap from="pose" to="head_pose"/>
+    <param name="octree_resolution" value="0.2"/>
   </node>
-  <node name="point_to_click" type="point_to_click.py" pkg="world_intersect" output="screen"/>
+  <!--node name="point_to_click" type="point_to_click.py" pkg="world_intersect" output="screen"/-->
 </launch>
