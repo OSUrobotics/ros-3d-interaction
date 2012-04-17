@@ -21,6 +21,9 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
+#include <float.h>
+#include <math.h>
+
 
 template <typename T>
 class NeverEmptyQueue : public std::queue<T>
@@ -51,7 +54,7 @@ NeverEmptyQueue<sensor_msgs::PointCloud2ConstPtr> g_cloud_queue;
 NeverEmptyQueue<geometry_msgs::PoseStampedConstPtr> g_pose_queue;
 
 // params
-double g_resolution;
+double g_resolution, g_min_dist;
 std::string g_vector_frame;
 
 void cloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
@@ -106,13 +109,16 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 	//ROS_INFO("vector intersected %d voxels", nPoints);
 	
 	PointCloud::Ptr out (new PointCloud);
-	out->header.stamp = ros::Time::now();
 	out->header.frame_id = vector_frame;
 	for(int i=0; i<nPoints; i++) {
-		out->points.push_back(cloud.points[k_indices[i]]);
+		if(g_min_dist < DBL_MAX) {
+			pcl::PointXYZ pt = cloud.points[k_indices[i]];
+			if(sqrt(pt.x*pt.x + pt.y*pt.y + pt.z*pt.z) > g_min_dist)
+				out->points.push_back(cloud.points[k_indices[i]]);
+		}
 	}
 	//ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[1], cloud.points[k_indices[1]].x, cloud.points[k_indices[1]].y, cloud.points[k_indices[1]].z);
-
+	out->header.stamp = ros::Time::now();
 	cloud_pub.publish(out);
 	
 	if(nPoints > 0) {
@@ -132,6 +138,7 @@ int main(int argc, char* argv[]) {
 	ros::NodeHandle pnh("~");
 	pnh.param("vector_frame",      g_vector_frame, std::string("intersected_vector"));
 	pnh.param("octree_resolution", g_resolution,   0.02);
+	pnh.param("min_dist",          g_min_dist,     DBL_MAX);
 	
 	listener = new tf::TransformListener();
 	broadcaster = new tf::TransformBroadcaster();
