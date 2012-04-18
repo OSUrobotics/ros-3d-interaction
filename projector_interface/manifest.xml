@@ -17,7 +17,8 @@
   <depend package="pr2_pick_and_place_demos"/>
   <depend package="object_manipulator"/>
   <depend package="image_geometry"/>
-
+  <depend package="pr2_python"/>
+  <depend package="tabletop_object_detector"/>
 </package>
 
 
