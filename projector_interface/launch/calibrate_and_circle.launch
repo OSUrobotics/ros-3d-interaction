@@ -1,10 +1,11 @@
 <launch>
+	<arg name="calibration_camera" default="/wide_stereo/right"/>
 	<env name="DISPLAY" value=":0"/>
 	<node name="calibrate_projector" type="calibrate.py" pkg="projector_calibration">
-		<remap from="image" to="/wide_stereo/right/image_rect"/>
+		<remap from="image" to="$(arg calibration_camera)/image_rect"/>
 		<param name="grid_size" value="5x7"/>
 	</node>
 	<node name="object_circler" type="object_circler.py" pkg="projector_interface">
-		<remap from="camera_info" to="/wide_stereo/right/camera_info"/>
+		<remap from="camera_info" to="$(arg calibration_camera)/camera_info"/>
 	</node>
 </launch>
