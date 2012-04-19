@@ -34,4 +34,3 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         object_cloud = detect(detect_srv)
         object_pub.publish(object_cloud)
-        print 'published'
