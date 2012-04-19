@@ -151,6 +151,7 @@ class Circler(QtGui.QWidget):
 		rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb)
 		rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
 		timer = PySide.QtCore.QTimer(self)
+		timer.setInterval(50)
 		timer.timeout.connect(self.update)
 		timer.start()
 		sys.exit(app.exec_())
