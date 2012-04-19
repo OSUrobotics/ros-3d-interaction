@@ -50,16 +50,17 @@ class Calibrator(object):
 			from pprint import pprint
 			H, mask = cv2.findHomography(np.float32(corners1[1]), corners2, method=cv2.RANSAC)
 			pprint(H)
-			self.homography_pub.publish(H.flatten())
+            rospy.set_param('/homography', H.flatten())
+            # self.homography_pub.publish(H.flatten())
 
-			c1 = np.array([corners1[1]])
-			c2 = np.array([corners2])
-			err = cv2.perspectiveTransform(c1,H) - c2
+            # c1 = np.array([corners1[1]])
+            # c2 = np.array([corners2])
+            # err = cv2.perspectiveTransform(c1,H) - c2
 		else:
 			if rospy.is_shutdown(): return
 			rospy.logwarn('Wrong number of corners. Is there something obstructing the calibration grid?')
 			self.calibrate()
-		self.grid.hide()
+		self.grid.exit()
 		
 	def image_cb(self, msg):
 		self.image = msg

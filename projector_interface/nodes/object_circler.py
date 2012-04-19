@@ -42,8 +42,8 @@ class Circler(QtGui.QWidget):
 		self.showFullScreen()
 
 
-	def homography_cb(self, msg):
-		self.H = msg.mat.reshape(3,3)
+    # def homography_cb(self, msg):
+    #     self.H = msg.mat.reshape(3,3)
 
 	def info_cb(self, info):
 		tmp_model = image_geometry.PinholeCameraModel()
@@ -137,12 +137,14 @@ class Circler(QtGui.QWidget):
 
 	def __init__(self):
 		super(Circler, self).__init__()
-		rospy.Subscriber('homography', numpy_msg(Homography), self.homography_cb)
+        # rospy.Subscriber('homography', numpy_msg(Homography), self.homography_cb)
 		self.tfl = tf.TransformListener()
 		r = rospy.Rate(10)
-		while self.H is None:
-			rospy.loginfo('waiting for homography...')
+        # while self.H is None:
+        rospy.loginfo('waiting for homography...')
+        while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
 			r.sleep()
+        self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
 		print self.H
 		self.initUI()
 		rospy.Subscriber('object_cloud', PointCloud2, self.object_cb)
