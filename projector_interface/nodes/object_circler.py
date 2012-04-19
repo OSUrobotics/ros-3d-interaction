@@ -140,11 +140,11 @@ class Circler(QtGui.QWidget):
         # rospy.Subscriber('homography', numpy_msg(Homography), self.homography_cb)
 		self.tfl = tf.TransformListener()
 		r = rospy.Rate(10)
-        # while self.H is None:
-        rospy.loginfo('waiting for homography...')
-        while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
+		# while self.H is None:
+		rospy.loginfo('waiting for homography...')
+		while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
 			r.sleep()
-        self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
+		self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
 		print self.H
 		self.initUI()
 		rospy.Subscriber('object_cloud', PointCloud2, self.object_cb)
