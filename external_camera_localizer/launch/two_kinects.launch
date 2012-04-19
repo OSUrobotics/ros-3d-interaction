@@ -2,11 +2,14 @@
 	<arg name="camera1" default="camera1"/>
 	<arg name="camera2" default="camera2"/>
 
-	<node pkg="tf" type="static_transform_publisher" name="world_to_cam1" 
-		args="0 0 0.5 -1.57 0 -1.57 world $(arg camera1)_link 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="world_to_cam_common" 
+		args="0 0 0 1.57 -1.57 1.57 world cam_common 100"/>	
 
-	<node pkg="tf" type="static_transform_publisher" name="world_to_cam2" 
-		args="0.817, -0.127, 0.347 0.079, -0.478, 0.842, -0.236 world $(arg camera2)_link 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="cam_common_to_cam1" 
+		args="0 0 0.5 -1.57 0 -1.57 cam_common $(arg camera1)_link 100"/>
+
+	<node pkg="tf" type="static_transform_publisher" name="cam_common_to_cam2" 
+		args="0.817, -0.127, 0.347 0.079, -0.478, 0.842, -0.236 cam_common $(arg camera2)_link 100"/>
 
 	<include file="$(find openni_launch)/launch/openni.launch">
 		<arg name="camera" value="$(arg camera1)"/>
