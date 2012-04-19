@@ -5,7 +5,7 @@ import numpy as np
 class CalibrationGrid(QtGui.QWidget):
 	_width = 700
 	_height = 500
-	padding = 50
+	padding = 100
 	corners = []
 	
 	key_handlers = dict()
