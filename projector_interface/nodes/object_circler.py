@@ -18,6 +18,10 @@ from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 import sys
 
+X_OFFSET =  25
+Y_OFFSET = -25
+
+
 class Circler(QtGui.QWidget):
 	H = None
 	objects = None	
@@ -100,7 +104,7 @@ class Circler(QtGui.QWidget):
 			if self.objects is not None and self.projected_objects is not None:
 				for xformed in self.projected_objects[0]:
 					#print 'circle at', xformed
-					r = 150
+					r = 100
 					qp = QtGui.QPainter()
 					qp.begin(self)
 					color = QtGui.QColor(255,255,255)
@@ -108,7 +112,7 @@ class Circler(QtGui.QWidget):
 					pen = qp.pen()
 					pen.setWidth(5)
 					qp.setPen(pen)
-					rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r, r, r)
+					rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
 					#rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
 					#rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
 					qp.drawArc(rect, 0, 360*16)
@@ -129,7 +133,8 @@ class Circler(QtGui.QWidget):
 					pen = qp.pen()
 					pen.setWidth(5)
 					qp.setPen(pen)
-					rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r, r, r)
+					rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
+
 					#rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
 					#rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
 					qp.drawArc(rect, 0, 360*16)
