@@ -12,6 +12,7 @@
   <depend package="projector_calibration"/>
   <depend package="cv_bridge"/>
   <depend package="tf"/>
+  <depend package="tf_conversions"/>
   <depend package="sensor_msgs"/>
   <depend package="geometry_msgs"/>
   <depend package="pr2_pick_and_place_demos"/>
