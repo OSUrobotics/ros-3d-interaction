@@ -21,6 +21,7 @@ import sys
 X_OFFSET =  25
 Y_OFFSET = -25
 
+SELECT_DIST_THRESH = 50 #ugh, this is in pixels
 
 class Circler(QtGui.QWidget):
 	H = None
@@ -30,7 +31,6 @@ class Circler(QtGui.QWidget):
 	int_projected_objects = None
 	int_ages = []
 	model = None
-	camera_frame = None
 	object_header = None
 	object_lock = RLock()
 	intersected_lock = RLock()
@@ -45,16 +45,10 @@ class Circler(QtGui.QWidget):
 		self.setPalette(p)
 		self.showFullScreen()
 
-
-    # def homography_cb(self, msg):
-    #     self.H = msg.mat.reshape(3,3)
-
 	def info_cb(self, info):
 		tmp_model = image_geometry.PinholeCameraModel()
 		tmp_model.fromCameraInfo(info)
 		self.model = tmp_model
-		self.camera_stamp = info.header.stamp
-		self.camera_frame = info.header.frame_id
 
 	def object_cb(self, msg):
 		with self.object_lock:
@@ -66,14 +60,9 @@ class Circler(QtGui.QWidget):
 			self.projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
 		
 	def intersected_cb(self, msg):
-		#rospy.loginfo('internsected cb')
 		with self.intersected_lock:
 			objects = read_points_np(msg, masked=False)
-			print objects.shape
 			if objects.shape[1] == 0:
-				print objects
-				#self.int_objects = None 
-				#self.int_projected_objects = None
 				return
 
 			self.int_object_header = msg.header
@@ -88,53 +77,37 @@ class Circler(QtGui.QWidget):
 		for point in points[0]:
 			pt = PointStamped()
 			pt.point.x, pt.point.y, pt.point.z = point.tolist()
-			stamp = self.tfl.getLatestCommonTime(self.camera_frame, point_header.frame_id)
+			stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
 			pt.header = point_header
 			pt.header.stamp = stamp
 			# first, transform the point into the camera frame
-			pt_out = self.tfl.transformPoint(self.camera_frame, pt).point
+			pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
 			# project it onto the image plane
 			px = self.model.project3dToPixel((pt_out.x, pt_out.y, pt_out.z))
 			pts_out.append(px)
 		return np.array([pts_out])
-			
+	
+	def isSelected(self, pt):
+		with self.intersected_lock:
+			if self.int_objects is not None and self.int_projected_objects is not None:
+				for xformed in self.int_projected_objects[0]:
+					if np.sqrt(((pt-xformed)**2).sum()) < SELECT_DIST_THRESH: return True
+			return False
+	
 	def paintEvent(self, e):
 		if rospy.is_shutdown(): sys.exit()
+		r = 100
 		with self.object_lock:
 			if self.objects is not None and self.projected_objects is not None:
 				for xformed in self.projected_objects[0]:
-					#print 'circle at', xformed
-					r = 100
 					qp = QtGui.QPainter()
 					qp.begin(self)
-					color = QtGui.QColor(255,255,255)
+					color = QtGui.QColor(0,255,0) if self.isSelected(xformed) else QtGui.QColor(255,255,255)
 					qp.setPen(color)
 					pen = qp.pen()
 					pen.setWidth(5)
 					qp.setPen(pen)
 					rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
-					#rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
-					#rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
-					qp.drawArc(rect, 0, 360*16)
-					qp.end()
-
-		#print '======================'
-		with self.intersected_lock:
-			if self.int_objects is not None and self.int_projected_objects is not None:
-				for (xformed, age) in zip(self.int_projected_objects[0], self.int_ages):
-					#if (rospy.Time.now() - age).to_sec() > 5: continue
-					#rospy.loginfo('intersected object at %s' % str(xformed))
-					#print 'green circle at', xformed
-					r = 100
-					qp = QtGui.QPainter()
-					qp.begin(self)
-					color = QtGui.QColor(0,255,0)
-					qp.setPen(color)
-					pen = qp.pen()
-					pen.setWidth(5)
-					qp.setPen(pen)
-					rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
-
 					#rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
 					#rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
 					qp.drawArc(rect, 0, 360*16)
@@ -142,10 +115,8 @@ class Circler(QtGui.QWidget):
 
 	def __init__(self):
 		super(Circler, self).__init__()
-        # rospy.Subscriber('homography', numpy_msg(Homography), self.homography_cb)
 		self.tfl = tf.TransformListener()
 		r = rospy.Rate(10)
-		# while self.H is None:
 		rospy.loginfo('waiting for homography...')
 		while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
 			r.sleep()
@@ -156,13 +127,13 @@ class Circler(QtGui.QWidget):
 		rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb)
 		rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
 		timer = PySide.QtCore.QTimer(self)
-		timer.setInterval(50)
+		timer.setInterval(100)
 		timer.timeout.connect(self.update)
 		timer.start()
 		sys.exit(app.exec_())
 		rospy.spin()
 
 if __name__ == '__main__':
-	rospy.init_node('projector_demo')
+	rospy.init_node('object_circler')
 	app = PySide.QtGui.QApplication(sys.argv)
 	c = Circler()
