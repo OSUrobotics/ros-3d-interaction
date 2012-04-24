@@ -23,11 +23,11 @@
 		<!-- all clouds will be processed in the incoming frame, which is -->
 		<!-- assumed to the the camera's optical frame -->
 		<param name="processing_frame"   value="" />
-		<param name="up_direction"       value="1.0" />
+		<param name="up_direction"       value="-1.0" />
 		<param name="z_filter_min"       value="0.0" />
 		<param name="z_filter_max"       value="2" />
 		<param name="y_filter_min"       value="-0.2" /><!--ok-->
-		<param name="y_filter_max"       value="0.5" /><!--ok-->
+		<param name="y_filter_max"       value="0.4" /><!--ok-->
 		<param name="x_filter_min"       value="-1.0" />
 		<param name="x_filter_max"       value="1.0" />
 		<param name="table_z_filter_min" value="0.03" />
