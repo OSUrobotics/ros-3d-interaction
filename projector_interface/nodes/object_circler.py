@@ -7,16 +7,17 @@ from sensor_msgs.msg import CameraInfo, PointCloud2
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
-import cv2
-import numpy as np
 import tf
 
+import cv2
+import numpy as np
+from collections import deque
 from threading import RLock
+import sys
 
 import PySide
 from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
-import sys
 
 X_OFFSET =  25
 Y_OFFSET = -25
@@ -32,7 +33,7 @@ class Circler(QtGui.QWidget):
     int_ages = []
     
     cursor_pts = None
-    projected_cursor = None
+    projected_cursor = deque([], 15)
     
     model = None
     object_header = None
@@ -87,7 +88,7 @@ class Circler(QtGui.QWidget):
             self.cursor_header = msg.header
             self.cursor_pts = objects
             transformed_pts = self.projectPoints(self.cursor_pts, msg.header)
-            self.projected_cursor = cv2.perspectiveTransform(transformed_pts, self.H)
+            self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
     def projectPoints(self, points, point_header):
         pts_out = []
@@ -132,20 +133,20 @@ class Circler(QtGui.QWidget):
                     
             r = 10
             with self.object_lock:
-                if self.cursor_pts is not None and self.projected_cursor is not None:
-                    for xformed in self.projected_cursor[0]:
-                        qp = QtGui.QPainter()
-                        qp.begin(self)
-                        color = QtGui.QColor(0,255,0) if self.isSelected(xformed) else QtGui.QColor(255,255,255)
-                        qp.setPen(color)
-                        pen = qp.pen()
-                        pen.setWidth(5)
-                        qp.setPen(pen)
-                        rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
-                        #rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
-                        #rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
-                        qp.drawArc(rect, 0, 360*16)
-                        qp.end()
+                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                    xformed = np.median(self.projected_cursor, 0)
+                    qp = QtGui.QPainter()
+                    qp.begin(self)
+                    color = QtGui.QColor(0, 135, 189)
+                    qp.setPen(color)
+                    pen = qp.pen()
+                    pen.setWidth(5)
+                    qp.setPen(pen)
+                    rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
+                    #rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
+                    #rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
+                    qp.drawArc(rect, 0, 360*16)
+                    qp.end()
                     
 
     def __init__(self):
