@@ -1,16 +1,30 @@
 <launch>
+	<arg name="filter_pose" default="false"/>
 	<include file="$(find external_camera_localizer)/launch/two_kinects.launch"/>
 	<include file="$(find projector_interface)/launch/tabletop_segmentation_overhead_kinect.launch">
 		<arg name="tabletop_segmentation_points_in" value="/camera2/depth/points"/>
 	</include>
 	<node pkg="projector_interface" name="find_objects" type="find_objects.py"/>
 	
-	<!--
-	<include file="$(find head_pose_estimation)/estimator.launch">
+	<include file="$(find head_pose_estimation)/launch/estimator.launch">
+		<arg name="filter_pose" value="$(arg filter_pose)"/>
 		<arg name="camera" value="camera1"/>
 	</include>
-	<include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
-		<arg name="calibration_camera" value="/camera2/rgb"/>
+	<!-- <include file="$(find world_intersect)/launch/intersect_pose.launch">
+		<arg name="cloud_to_intersect" value="/object_cloud"/>
+	</include> -->
+
+	<include file="$(find projector_interface)/launch/filters.launch">
+		<arg name="cloud_in" value="/camera2/depth/points"/>
+		<arg name="cloud_out" value="/table_filtered"/>
 	</include>
-	-->
+	<include file="$(find world_intersect)/launch/intersect_pose.launch">
+		<arg unless="$(arg filter_pose)" name="head_pose" value="head_pose"/>
+		<arg     if="$(arg filter_pose)" name="head_pose" value="head_pose_filtered"/>
+		<!-- <arg name="cloud_to_intersect" value="/camera2/depth/points"/> -->
+		<arg name="cloud_to_intersect" value="/table_filtered"/>
+	</include>
+	<include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
+		<arg name="calibration_camera" value="/camera2"/>
+	</include>
 </launch>

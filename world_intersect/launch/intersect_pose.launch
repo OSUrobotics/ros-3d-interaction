@@ -1,9 +1,10 @@
 <launch>
   <arg name="cloud_to_intersect" default="laser_cloud_converted"/>
+  <arg name="head_pose" default="head_pose"/>
   <node name="world_intersect" type="world_intersect" pkg="world_intersect" output="screen">
     <remap from="cloud" to="$(arg cloud_to_intersect)"/>
-    <!-- <remap from="pose" to="head_pose"/> -->
-    <remap from="pose" to="head_pose_filtered"/>
+    <remap from="pose" to="$(arg head_pose)"/>
+    <!--remap from="pose" to="head_pose_filtered"/-->
     <!-- <param name="octree_resolution" value="0.4"/> -->
     <param name="octree_resolution" value="0.02"/>
     <param name="min_dist" value="0.10"/>
