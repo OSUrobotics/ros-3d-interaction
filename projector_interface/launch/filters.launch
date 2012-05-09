@@ -1,0 +1,38 @@
+<launch>
+	<arg name="cloud_in"/>
+	<arg name="cloud_out"/>
+    <include file="$(find pcl_ros)/launch/demos/manager.launch"/>
+    <node pkg="nodelet" type="nodelet" name="xfilter" args="load pcl/PassThrough pcl_manager" output="screen">
+        <remap from="/xfilter/input" to="$(arg cloud_in)"/>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="yfilter" args="load pcl/PassThrough pcl_manager" output="screen">
+        <remap from="/yfilter/input" to="/xfilter/output"/>
+    </node>
+    <node pkg="nodelet" type="nodelet" name="zfilter" args="load pcl/PassThrough pcl_manager" output="screen">
+        <remap from="/zfilter/input" to="/yfilter/output"/>
+        <remap from="/zfilter/output" to="$(arg cloud_out)"/>
+    </node>
+	
+	<!--node pkg="dynamic_reconfigure" type="dynparam" name="x_params" args="set_from_parameters xfilter -t100">
+		<param name="filter_field_name" value="x"/>
+		<param name="filter_limit_min" value="-5"/>
+		<param name="filter_limit_max" value="5"/>
+		<param name="input_frame" value="/table"/>
+		<param name="output_frame" value="/table"/>
+	</node>
+
+	<node pkg="dynamic_reconfigure" type="dynparam" name="y_params" args="set_from_parameters yfilter -t100">
+		<param name="filter_field_name" value="y"/>
+		<param name="filter_limit_min" value="-5"/>
+		<param name="filter_limit_max" value="5"/>
+		<param name="input_frame" value="/table"/>
+	</node>
+
+	<node pkg="dynamic_reconfigure" type="dynparam" name="z_params" args="set_from_parameters zfilter -t100">
+		<param name="filter_field_name" value="z"/>
+		<param name="filter_limit_min" value="-5"/>
+		<param name="filter_limit_max" value="5"/>
+		<param name="input_frame" value="/table"/>
+	</node-->
+	
+</launch>
