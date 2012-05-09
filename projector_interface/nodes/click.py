@@ -5,7 +5,7 @@ from std_msgs.msg import Empty
 import rospy
 
 def joy_cb(msg, args):
-    click = msg.buttons[0]
+    click = msg.buttons[2]
     if click:
         args[0].publish()
 

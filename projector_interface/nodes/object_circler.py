@@ -4,6 +4,7 @@ from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
+from std_msgs.msg import Empty
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
@@ -23,6 +24,12 @@ X_OFFSET =  25
 Y_OFFSET = -25
 
 SELECT_DIST_THRESH = 50 #ugh, this is in pixels
+SAME_OBJ_THRESH    = 0.03
+
+class Colors:
+    WHITE = QtGui.QColor(255,255,255)
+    GREEN = QtGui.QColor(  0,255,0  )
+    BLUE  = QtGui.QColor(  0,135,189)
 
 class Circler(QtGui.QWidget):
     H = None
@@ -31,9 +38,12 @@ class Circler(QtGui.QWidget):
     int_objects = None  
     int_projected_objects = None
     int_ages = []
+    click = rospy.Time(0)
+    click_loc = np.float64([[-1,-1,-1]])
+    click_duration = rospy.Duration(2.0)
     
     cursor_pts = None
-    projected_cursor = deque([], 15)
+    projected_cursor = deque([], rospy.get_param('~/window_size', 5))
     
     model = None
     object_header = None
@@ -57,6 +67,9 @@ class Circler(QtGui.QWidget):
         tmp_model = image_geometry.PinholeCameraModel()
         tmp_model.fromCameraInfo(info)
         self.model = tmp_model
+        
+    def click_cb(self, msg):
+        self.click = rospy.Time.now()
 
     def object_cb(self, msg):
         with self.object_lock:
@@ -112,15 +125,54 @@ class Circler(QtGui.QWidget):
                     if np.sqrt(((pt-xformed)**2).sum()) < SELECT_DIST_THRESH: return True
             return False
     
+    def dist(self, p1, p2):
+        return np.sum(np.sqrt((p1-p2)**2))
+    
+    def sameObject(self, p1, p2):
+        return self.dist(p1,p2) < SAME_OBJ_THRESH
+    
     def paintEvent(self, e):
         if rospy.is_shutdown(): sys.exit()
+        # circle the objects
         r = 100
         with self.object_lock:
             if self.objects is not None and self.projected_objects is not None:
-                for xformed in self.projected_objects[0]:
+                for pt, xformed in zip(self.objects[0], self.projected_objects[0]):
                     qp = QtGui.QPainter()
                     qp.begin(self)
-                    color = QtGui.QColor(0,255,0) if self.isSelected(xformed) else QtGui.QColor(255,255,255)
+                    color = Colors.WHITE
+                    if self.isSelected(xformed):
+                        color = Colors.GREEN
+                        if (rospy.Time.now() - self.click) < self.click_duration:
+                            color = Colors.BLUE
+                            if not self.sameObject(pt, self.click_loc):
+                                sel_pt = PointStamped()
+                                sel_pt.header.stamp = rospy.Time.now()
+                                sel_pt.header.frame_id = self.object_header.frame_id
+                                sel_pt.point.x, sel_pt.point.y, sel_pt.point.z = pt.tolist()
+                                self.selected_pub.publish(sel_pt)
+                            self.click_loc = pt
+                    elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
+                        color = Colors.BLUE
+                        self.click_loc = pt
+                    qp.setPen(color)
+                    pen = qp.pen()
+                    pen.setWidth(5)
+                    qp.setPen(pen)
+                    rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
+                    #rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
+                    #rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
+                    qp.drawArc(rect, 0, 360*16)
+                    qp.end()
+                   
+            # draw the cursor 
+            r = 10
+            with self.object_lock:
+                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                    xformed = np.median(self.projected_cursor, 0)                        
+                    qp = QtGui.QPainter()
+                    qp.begin(self)
+                    color = Colors.BLUE
                     qp.setPen(color)
                     pen = qp.pen()
                     pen.setWidth(5)
@@ -131,22 +183,10 @@ class Circler(QtGui.QWidget):
                     qp.drawArc(rect, 0, 360*16)
                     qp.end()
                     
-            r = 10
-            with self.object_lock:
-                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    xformed = np.median(self.projected_cursor, 0)
-                    qp = QtGui.QPainter()
-                    qp.begin(self)
-                    color = QtGui.QColor(0, 135, 189)
-                    qp.setPen(color)
-                    pen = qp.pen()
-                    pen.setWidth(5)
-                    qp.setPen(pen)
-                    rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
-                    #rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
-                    #rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
-                    qp.drawArc(rect, 0, 360*16)
-                    qp.end()
+        # reset once the click has expired
+        if (rospy.Time.now() - self.click) >= self.click_duration:
+            self.click_loc = np.float64([[-1,-1,-1]])
+            self.click_duration = rospy.Duration(2.0)
                     
 
     def __init__(self):
@@ -160,9 +200,11 @@ class Circler(QtGui.QWidget):
         print self.H
         self.initUI()
         rospy.Subscriber('object_cloud', PointCloud2, self.object_cb)
+        rospy.Subscriber('click', Empty, self.click_cb)
         rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb)
         rospy.Subscriber('intersected_points_cursor', PointCloud2, self.cursor_cb)
         rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
+        self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(100)
         timer.timeout.connect(self.update)
@@ -172,5 +214,6 @@ class Circler(QtGui.QWidget):
 
 if __name__ == '__main__':
     rospy.init_node('object_circler')
+    print 'Window size is %s' % rospy.get_param('~window_size', 1)
     app = PySide.QtGui.QApplication(sys.argv)
     c = Circler()

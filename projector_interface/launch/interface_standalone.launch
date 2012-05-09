@@ -27,4 +27,8 @@
 	<include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
 		<arg name="calibration_camera" value="/camera2"/>
 	</include>
+	
+	<node name="click" type="click.py" pkg="projector_interface"/>
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote"/>
+	
 </launch>
