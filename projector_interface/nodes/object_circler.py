@@ -8,6 +8,8 @@ from std_msgs.msg import Empty
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
+from pr2_python.pointclouds import xyz_array_to_pointcloud2
+import projector_interface.srv
 import tf
 
 import cv2
@@ -44,6 +46,7 @@ class Circler(QtGui.QWidget):
     
     cursor_pts = None
     projected_cursor = deque([], rospy.get_param('~/window_size', 5))
+    cursor_pts_xyz = deque([], rospy.get_param('~/window_size', 10))
     
     model = None
     object_header = None
@@ -52,6 +55,8 @@ class Circler(QtGui.QWidget):
     object_lock = RLock()
     intersected_lock = RLock()
     cursor_lock = RLock()
+    
+    hilights = []
     
     def escHandler(self, e):
         sys.exit(0)
@@ -70,7 +75,9 @@ class Circler(QtGui.QWidget):
         
     def click_cb(self, msg):
         self.click = rospy.Time.now()
-
+        with self.cursor_lock:
+            self.click_stats_pub.publish(xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz)))
+        
     def object_cb(self, msg):
         with self.object_lock:
             objects = read_points_np(msg, masked=False)
@@ -101,6 +108,7 @@ class Circler(QtGui.QWidget):
             self.cursor_header = msg.header
             self.cursor_pts = objects
             transformed_pts = self.projectPoints(self.cursor_pts, msg.header)
+            self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
     def projectPoints(self, points, point_header):
@@ -124,8 +132,21 @@ class Circler(QtGui.QWidget):
                 for xformed in self.int_projected_objects[0]:
                     if np.sqrt(((pt-xformed)**2).sum()) < SELECT_DIST_THRESH: return True
             return False
+            
+    def isHilighted(self, pt):
+        with self.intersected_lock:
+            for hi in self.hilights:
+                if self.sameObject(pt, hi[0]): return True
+        return False
+        
+    def getHilightColor(self, pt):
+        with self.intersected_lock:
+            for hi in self.hilights:
+                if self.sameObject(pt, hi[0]):
+                    return hi[1]
     
     def dist(self, p1, p2):
+        p1 = np.array(p1)
         return np.sum(np.sqrt((p1-p2)**2))
     
     def sameObject(self, p1, p2):
@@ -141,6 +162,8 @@ class Circler(QtGui.QWidget):
                     qp = QtGui.QPainter()
                     qp.begin(self)
                     color = Colors.WHITE
+                    if self.isHilighted(pt):
+                        color = self.getHilightColor(pt)
                     if self.isSelected(xformed):
                         color = Colors.GREEN
                         if (rospy.Time.now() - self.click) < self.click_duration:
@@ -187,7 +210,16 @@ class Circler(QtGui.QWidget):
         if (rospy.Time.now() - self.click) >= self.click_duration:
             self.click_loc = np.float64([[-1,-1,-1]])
             self.click_duration = rospy.Duration(2.0)
-                    
+                 
+    def handle_hilight(self, req):
+        pt = self.tfl.transformPoint(self.object_header.frame_id, req.object).point
+        color = QtGui.QColor(req.color.r,req.color.g,req.color.b)
+        self.hilights.append(([pt.x,pt.y,pt.z], color))
+        return projector_interface.srv.HilightObjectResponse()
+        
+    def handle_clear_hilight(self, req):
+        self.hilights = []
+        return projector_interface.srv.ClearHilightsResponse()
 
     def __init__(self):
         super(Circler, self).__init__()
@@ -204,7 +236,10 @@ class Circler(QtGui.QWidget):
         rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb)
         rospy.Subscriber('intersected_points_cursor', PointCloud2, self.cursor_cb)
         rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
+        rospy.Service('hilight_object', projector_interface.srv.HilightObject, self.handle_hilight)
+        rospy.Service('clear_hilights', projector_interface.srv.ClearHilights, self.handle_clear_hilight)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
+        self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(100)
         timer.timeout.connect(self.update)
