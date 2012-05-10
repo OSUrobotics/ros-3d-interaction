@@ -76,7 +76,10 @@ class Circler(QtGui.QWidget):
     def click_cb(self, msg):
         self.click = rospy.Time.now()
         with self.cursor_lock:
-            self.click_stats_pub.publish(xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz)))
+            msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
+            msg.header.frame_id = '/table'
+            msg.header.stamp = rospy.Time.now()
+            self.click_stats_pub.publish(msg)
         
     def object_cb(self, msg):
         with self.object_lock:
@@ -221,6 +224,16 @@ class Circler(QtGui.QWidget):
         self.hilights = []
         return projector_interface.srv.ClearHilightsResponse()
 
+    def handle_get_cursor_stats(self, req):
+        while not (rospy.Time.now() - self.click) < self.click_duration:
+            rospy.sleep(0.05)
+        with self.cursor_lock:
+            msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
+            msg.header.frame_id = '/table'
+            msg.header.stamp = rospy.Time.now()
+            return projector_interface.srv.GetCursorStatsResponse(msg)
+        
+
     def __init__(self):
         super(Circler, self).__init__()
         self.tfl = tf.TransformListener()
@@ -238,6 +251,7 @@ class Circler(QtGui.QWidget):
         rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
         rospy.Service('hilight_object', projector_interface.srv.HilightObject, self.handle_hilight)
         rospy.Service('clear_hilights', projector_interface.srv.ClearHilights, self.handle_clear_hilight)
+        rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         timer = PySide.QtCore.QTimer(self)
