@@ -1,0 +1,41 @@
+<launch>
+	<arg name="filter_pose" default="false"/>
+	<include file="$(find external_camera_localizer)/launch/two_kinects.launch"/>
+	<env name="DISPLAY" value=":0.1"/>
+	<include file="$(find head_pose_estimation)/launch/estimator.launch">
+		<arg name="filter_pose" value="$(arg filter_pose)"/>
+		<arg name="camera" value="camera1"/>
+	</include>
+	
+	<include file="$(find projector_interface)/launch/tabletop_segmentation_overhead_kinect.launch">
+		<arg name="tabletop_segmentation_points_in" value="/camera2/depth/points"/>
+	</include>
+	<node pkg="projector_interface" name="find_objects" type="find_objects.py">
+		<remap from="object_cloud" to="object_cloud_redir"/>
+	</node>
+	<!-- <include file="$(find world_intersect)/launch/intersect_pose.launch">
+		<arg name="cloud_to_intersect" value="/object_cloud"/>
+	</include> -->
+
+	<include file="$(find projector_interface)/launch/filters.launch">
+		<arg name="cloud_in" value="/camera2/depth/points"/>
+		<arg name="cloud_out" value="/table_filtered"/>
+	</include>
+	<include file="$(find world_intersect)/launch/intersect_pose.launch">
+		<arg unless="$(arg filter_pose)" name="head_pose" value="head_pose"/>
+		<arg     if="$(arg filter_pose)" name="head_pose" value="head_pose_filtered"/>
+		<!-- <arg name="cloud_to_intersect" value="/camera2/depth/points"/> -->
+		<arg name="cloud_to_intersect" value="/table_filtered"/>
+	</include>
+	
+	<env name="DISPLAY" value=":0.0"/>
+	<rosparam param="/homography">[0.41675189347746733,3.0269157279118915,-551.5387595292218,2.841111601621856,0.3641756455828021,-258.01388220325794,0.0005767250647778583,0.0008848435234808886,1.0]</rosparam>
+	<node name="object_circler" type="object_circler.py" pkg="projector_interface">
+		<remap from="camera_info" to="/camera2/rgb/camera_info"/>
+		<remap from="intersected_points_cursor" to="/intersected_points"/>
+	</node>
+		
+	<node name="click" type="click.py" pkg="projector_interface"/>
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote"/>
+	
+</launch>
