@@ -43,6 +43,7 @@ class Circler(QtGui.QWidget):
     click = rospy.Time(0)
     click_loc = np.float64([[-1,-1,-1]])
     click_duration = rospy.Duration(2.0)
+    use_selected_thresh = True
     
     cursor_pts = None
     projected_cursor = deque([], rospy.get_param('~/window_size', 5))
@@ -134,7 +135,7 @@ class Circler(QtGui.QWidget):
             if self.int_objects is not None and self.int_projected_objects is not None:
                 for xformed in self.int_projected_objects[0]:
                     if np.sqrt(((pt-xformed)**2).sum()) < SELECT_DIST_THRESH: return True
-            return False
+        return False
             
     def isHilighted(self, pt):
         with self.intersected_lock:
@@ -159,15 +160,22 @@ class Circler(QtGui.QWidget):
         if rospy.is_shutdown(): sys.exit()
         # circle the objects
         r = 100
+        
         with self.object_lock:
             if self.objects is not None and self.projected_objects is not None:
+                # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
+                cursor = np.median(self.projected_cursor, 0)
+                distances = [self.dist(pp,cursor) for pp in self.projected_objects[0]]
+                closest_pt = self.projected_objects[0,np.argmin(distances)]
+                
                 for pt, xformed in zip(self.objects[0], self.projected_objects[0]):
                     qp = QtGui.QPainter()
                     qp.begin(self)
                     color = Colors.WHITE
                     if self.isHilighted(pt):
                         color = self.getHilightColor(pt)
-                    if self.isSelected(xformed):
+                    if (self.use_selected_thresh and self.isSelected(xformed)) or\
+                       (not self.use_selected_thresh and all(xformed==closest_pt)):                        
                         color = Colors.GREEN
                         if (rospy.Time.now() - self.click) < self.click_duration:
                             color = Colors.BLUE
@@ -195,7 +203,7 @@ class Circler(QtGui.QWidget):
             r = 10
             with self.object_lock:
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    xformed = np.median(self.projected_cursor, 0)                        
+                    xformed = np.median(self.projected_cursor, 0)
                     qp = QtGui.QPainter()
                     qp.begin(self)
                     color = Colors.BLUE
@@ -233,6 +241,12 @@ class Circler(QtGui.QWidget):
             msg.header.stamp = rospy.Time.now()
             return projector_interface.srv.GetCursorStatsResponse(msg)
         
+    def set_selection_method(self, req):
+        if req.method == req.THRESH:
+            self.use_selected_thresh = True
+        elif req.method == req.CLOSEST:
+            self.use_selected_thresh = False
+        return projector_interface.srv.SetSelectionMethodResponse()
 
     def __init__(self):
         super(Circler, self).__init__()
@@ -242,6 +256,7 @@ class Circler(QtGui.QWidget):
         while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
             r.sleep()
         self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
+        rospy.loginfo('got homography')
         print self.H
         self.initUI()
         rospy.Subscriber('object_cloud', PointCloud2, self.object_cb)
@@ -252,12 +267,14 @@ class Circler(QtGui.QWidget):
         rospy.Service('hilight_object', projector_interface.srv.HilightObject, self.handle_hilight)
         rospy.Service('clear_hilights', projector_interface.srv.ClearHilights, self.handle_clear_hilight)
         rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
+        rospy.Service('set_selection_method', projector_interface.srv.SetSelectionMethod, self.set_selection_method)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(100)
         timer.timeout.connect(self.update)
         timer.start()
+        rospy.loginfo('interface started')
         sys.exit(app.exec_())
         rospy.spin()
 
