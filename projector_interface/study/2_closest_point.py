@@ -20,6 +20,7 @@ xx, yy = np.meshgrid(xs, ys)
 points = np.array([(x,y,0) for x,y in zip(xx.ravel(), yy.ravel())])
 points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
 topics.object_cloud(points_msg)
+services.set_selection_method(1)
 
 def sameObject(self, p1, p2):
     return self.dist(p1,p2) < SAME_OBJ_THRESH
@@ -40,7 +41,7 @@ times = []
 cursor_history = []
 history_size = 0
 
-for idx in chain(order):
+for idx in chain(*[reversed(o) for o in order]):
     point = points[idx]
     targets.append(point)
     print 'hilighting ', point
@@ -65,7 +66,7 @@ for idx in chain(order):
     sleep(3)
         
 services.clear_hilights()
-path = '/home/robotics/lazewatskyd/ros-pkgs/wu-ros-pkg/3d_interaction/projector_interface/study/data/object_designation_%s.mat'
+path = '/home/robotics/lazewatskyd/ros-pkgs/wu-ros-pkg/3d_interaction/projector_interface/study/data/2_closest_point_%s.mat'
 timestr = datetime.datetime.today().strftime('%d-%m-%y-%H.%M.%f')
 scipy.io.savemat(path % timestr,    dict(targets=targets,
                                          stds=stds,
