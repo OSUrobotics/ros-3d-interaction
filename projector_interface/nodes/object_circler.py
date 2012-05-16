@@ -25,6 +25,8 @@ from PySide.QtGui import QPalette
 X_OFFSET =  25
 Y_OFFSET = -25
 
+CURSOR_OFFSET = np.array([0,25])
+
 SELECT_DIST_THRESH = 50 #ugh, this is in pixels
 SAME_OBJ_THRESH    = 0.03
 
@@ -178,7 +180,14 @@ class Circler(QtGui.QWidget):
                        (not self.use_selected_thresh and all(xformed==closest_pt)):                        
                         color = Colors.GREEN
                         if (rospy.Time.now() - self.click) < self.click_duration:
-                            color = Colors.BLUE
+                            # color = Colors.BLUE
+                            inner_pen = qp.pen()
+                            inner_pen.setWidth(6)
+                            inner_pen.setColor(Colors.BLUE)
+                            qp.setPen(inner_pen)
+                            inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
+                            qp.drawArc(inner_rect, 0, 360*16)
+                            
                             if not self.sameObject(pt, self.click_loc):
                                 sel_pt = PointStamped()
                                 sel_pt.header.stamp = rospy.Time.now()
@@ -187,8 +196,14 @@ class Circler(QtGui.QWidget):
                                 self.selected_pub.publish(sel_pt)
                             self.click_loc = pt
                     elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
-                        color = Colors.BLUE
-                        self.click_loc = pt
+                        # color = Colors.BLUE
+                        inner_pen = qp.pen()
+                        inner_pen.setWidth(5)
+                        inner_pen.setColor(Colors.BLUE)
+                        qp.setPen(inner_pen)
+                        inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r-5, r-5)
+                        qp.drawArc(inner_rect, 0, 360*16)
+                        self.click_loc = pt # maybe this shouldn't be here
                     qp.setPen(color)
                     pen = qp.pen()
                     pen.setWidth(5)
@@ -212,9 +227,11 @@ class Circler(QtGui.QWidget):
                     pen.setWidth(5)
                     qp.setPen(pen)
                     rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r, r)
+                    qp.drawArc(rect, 0, 360*16)
+                    
                     #rect = QtCore.QRectF(800-xformed[1]-r/2 + 25, 600-xformed[0]-r/2, r, r)
                     #rect = QtCore.QRectF(xformed[1]-r/2 + 25, xformed[0]-r/2, r, r)
-                    qp.drawArc(rect, 0, 360*16)
+                    
                     qp.end()
                     
         # reset once the click has expired
