@@ -45,6 +45,9 @@ class Circler(QtGui.QWidget):
     click = rospy.Time(0)
     click_loc = np.float64([[-1,-1,-1]])
     click_duration = rospy.Duration(2.0)
+    
+    selected_pt = np.array([])
+    
     use_selected_thresh = True
     
     cursor_pts = None
@@ -78,7 +81,10 @@ class Circler(QtGui.QWidget):
         
     def click_cb(self, msg):
         self.click = rospy.Time.now()
+        # self.sameObject(pt, self.click_loc)
+        
         with self.cursor_lock:
+            self.click_loc = self.selected_pt
             msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
             msg.header.frame_id = '/table'
             msg.header.stamp = rospy.Time.now()
@@ -177,33 +183,41 @@ class Circler(QtGui.QWidget):
                     if self.isHilighted(pt):
                         color = self.getHilightColor(pt)
                     if (self.use_selected_thresh and self.isSelected(xformed)) or\
-                       (not self.use_selected_thresh and all(xformed==closest_pt)):                        
+                       (not self.use_selected_thresh and all(xformed==closest_pt)):
+                        self.selected_pt = pt
                         color = Colors.GREEN
-                        if (rospy.Time.now() - self.click) < self.click_duration:
-                            # color = Colors.BLUE
-                            inner_pen = qp.pen()
-                            inner_pen.setWidth(6)
-                            inner_pen.setColor(Colors.BLUE)
-                            qp.setPen(inner_pen)
-                            inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
-                            qp.drawArc(inner_rect, 0, 360*16)
                             
-                            if not self.sameObject(pt, self.click_loc):
-                                sel_pt = PointStamped()
-                                sel_pt.header.stamp = rospy.Time.now()
-                                sel_pt.header.frame_id = self.object_header.frame_id
-                                sel_pt.point.x, sel_pt.point.y, sel_pt.point.z = pt.tolist()
-                                self.selected_pub.publish(sel_pt)
-                            self.click_loc = pt
-                    elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
+                            # if not self.sameObject(pt, self.click_loc):
+                            #     sel_pt = PointStamped()
+                            #     sel_pt.header.stamp = rospy.Time.now()
+                            #     sel_pt.header.frame_id = self.object_header.frame_id
+                            #     sel_pt.point.x, sel_pt.point.y, sel_pt.point.z = pt.tolist()
+                            #     self.selected_pub.publish(sel_pt)
+                            # self.click_loc = pt
+                            
+                    # is it the clicked point?
+                    # if ((rospy.Time.now() - self.click) < self.click_duration) and\
+                    #    (self.sameObject(pt, self.click_loc)):
+                    if self.sameObject(pt, self.click_loc):
                         # color = Colors.BLUE
                         inner_pen = qp.pen()
-                        inner_pen.setWidth(5)
+                        inner_pen.setWidth(6)
                         inner_pen.setColor(Colors.BLUE)
                         qp.setPen(inner_pen)
-                        inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r-5, r-5)
+                        inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
                         qp.drawArc(inner_rect, 0, 360*16)
-                        self.click_loc = pt # maybe this shouldn't be here
+                    
+                    
+                    
+                    # elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
+                    #     # color = Colors.BLUE
+                    #     inner_pen = qp.pen()
+                    #     inner_pen.setWidth(5)
+                    #     inner_pen.setColor(Colors.BLUE)
+                    #     qp.setPen(inner_pen)
+                    #     inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r-5, r-5)
+                    #     qp.drawArc(inner_rect, 0, 360*16)
+                    #     self.click_loc = pt # maybe this shouldn't be here
                     qp.setPen(color)
                     pen = qp.pen()
                     pen.setWidth(5)
