@@ -41,7 +41,8 @@ times = []
 cursor_history = []
 history_size = 0
 
-for idx in chain(order):
+start_time = now()
+for idx in chain(*order):
     point = points[idx]
     targets.append(point)
     print 'hilighting ', point
@@ -72,5 +73,6 @@ scipy.io.savemat(path % timestr,    dict(targets=targets,
                                          stds=stds,
                                          times=times,
                                          cursor_history=cursor_history,
-                                         history_size=history_size))
+                                         history_size=history_size,
+                                         total_time=(now()-start_time).to_sec()))
 print 'Saved %s' % (path % timestr)

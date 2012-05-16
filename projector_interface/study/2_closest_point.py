@@ -41,6 +41,7 @@ times = []
 cursor_history = []
 history_size = 0
 
+start_time = now()
 for idx in chain(*[reversed(o) for o in order]):
     point = points[idx]
     targets.append(point)
@@ -72,5 +73,6 @@ scipy.io.savemat(path % timestr,    dict(targets=targets,
                                          stds=stds,
                                          times=times,
                                          cursor_history=cursor_history,
-                                         history_size=history_size))
+                                         history_size=history_size,
+                                         total_time=(now()-start_time).to_sec()))
 print 'Saved %s' % (path % timestr)
