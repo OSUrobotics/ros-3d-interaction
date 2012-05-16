@@ -34,7 +34,7 @@ history_size = 0
 
 start_time = now()
 for idx in range(len(points)*2):
-    point = choice(points)
+    point = points[idx]
     targets.append(point)
     print 'hilighting ', point
     services.clear_hilights()
@@ -46,11 +46,24 @@ for idx in range(len(points)*2):
     
     t1 = now()
     services.hilight_object(pt, ColorRGBA(255,0,0,0))
-    # click_pts_msg = topics.click_stats[0]
-    click_pts_msg = services.get_cursor_stats().points
+    click_pts_msg = services.get_cursor_stats()
+    click_pt = [
+        click_pts_msg.click_pos.point.x,
+        click_pts_msg.click_pos.point.y,
+        click_pts_msg.click_pos.point.z
+    ]
+    r = Rate(10)
+    while not sameObject(click_pt, point):
+        click_pts_msg = services.get_cursor_stats()
+        click_pt = [
+            click_pts_msg.click_pos.point.x,
+            click_pts_msg.click_pos.point.y,
+            click_pts_msg.click_pos.point.z
+        ]
+        r.sleep()
+    click_pts = pointcloud2_to_xyz_array(click_pts_msg.points)
     t2 = now()
     times.append((t2-t1).to_sec())
-    click_pts = pointcloud2_to_xyz_array(click_pts_msg)
     history_size = click_pts.shape[0]
     cursor_history.extend(click_pts)
     stds.append(click_pts.std(0))
