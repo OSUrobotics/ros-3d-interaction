@@ -1,2 +1,3 @@
 ---
 sensor_msgs/PointCloud2 points
+geometry_msgs/PointStamped click_pos

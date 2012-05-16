@@ -208,7 +208,6 @@ class Circler(QtGui.QWidget):
                         qp.drawArc(inner_rect, 0, 360*16)
                     
                     
-                    
                     # elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
                     #     # color = Colors.BLUE
                     #     inner_pen = qp.pen()
@@ -270,7 +269,11 @@ class Circler(QtGui.QWidget):
             msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
             msg.header.frame_id = '/table'
             msg.header.stamp = rospy.Time.now()
-            return projector_interface.srv.GetCursorStatsResponse(msg)
+            
+            pt_msg = PointStamped()
+            pt_msg.header = msg.header
+            pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.click_loc
+            return projector_interface.srv.GetCursorStatsResponse(msg, pt_msg)
         
     def set_selection_method(self, req):
         if req.method == req.THRESH:
