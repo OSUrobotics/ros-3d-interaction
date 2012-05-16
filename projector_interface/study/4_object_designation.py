@@ -6,6 +6,9 @@ import datetime
 import scipy.io
 import numpy as np
 from itertools import chain
+
+from point_tests import sameObject, closestPoint
+
 load('rosh_robot', globals())
 
 xmin = -0.79651666
@@ -21,9 +24,6 @@ points = np.array([(x,y,0) for x,y in zip(xx.ravel(), yy.ravel())])
 points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
 topics.object_cloud(points_msg)
 services.set_selection_method(0)
-
-def sameObject(self, p1, p2):
-    return self.dist(p1,p2) < SAME_OBJ_THRESH
     
 order = [
     [0,  2,  1,  3],
@@ -42,7 +42,7 @@ cursor_history = []
 history_size = 0
 
 start_time = now()
-for idx in reversed(*list(chain(order))):
+for idx in reversed(list(chain(*order))):
     point = points[idx]
     targets.append(point)
     print 'hilighting ', point
@@ -55,11 +55,24 @@ for idx in reversed(*list(chain(order))):
     
     t1 = now()
     services.hilight_object(pt, ColorRGBA(255,0,0,0))
-    # click_pts_msg = topics.click_stats[0]
-    click_pts_msg = services.get_cursor_stats().points
+    click_pts_msg = services.get_cursor_stats()
+    click_pt = [
+        click_pts_msg.click_pos.point.x,
+        click_pts_msg.click_pos.point.y,
+        click_pts_msg.click_pos.point.z
+    ]
+    r = Rate(10)
+    while not sameObject(click_pt, point):
+        click_pts_msg = services.get_cursor_stats()
+        click_pt = [
+            click_pts_msg.click_pos.point.x,
+            click_pts_msg.click_pos.point.y,
+            click_pts_msg.click_pos.point.z
+        ]
+        r.sleep()
+    click_pts = pointcloud2_to_xyz_array(click_pts_msg.points)
     t2 = now()
     times.append((t2-t1).to_sec())
-    click_pts = pointcloud2_to_xyz_array(click_pts_msg)
     history_size = click_pts.shape[0]
     cursor_history.extend(click_pts)
     stds.append(click_pts.std(0))
