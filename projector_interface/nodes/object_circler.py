@@ -179,9 +179,17 @@ class Circler(QtGui.QWidget):
                 for pt, xformed in zip(self.objects[0], self.projected_objects[0]):
                     qp = QtGui.QPainter()
                     qp.begin(self)
+                    qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
                     color = Colors.WHITE
                     if self.isHilighted(pt):
-                        color = self.getHilightColor(pt)
+                        # color = self.getHilightColor(pt)
+                        inner_pen = qp.pen()
+                        inner_pen.setWidth(6)
+                        inner_pen.setColor(self.getHilightColor(pt))
+                        qp.setPen(inner_pen)
+                        inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
+                        qp.drawArc(inner_rect, 0, 360*16)
+                        
                     if (self.use_selected_thresh and self.isSelected(xformed)) or\
                        (not self.use_selected_thresh and all(xformed==closest_pt)):
                         self.selected_pt = pt
@@ -199,13 +207,13 @@ class Circler(QtGui.QWidget):
                     # if ((rospy.Time.now() - self.click) < self.click_duration) and\
                     #    (self.sameObject(pt, self.click_loc)):
                     if self.sameObject(pt, self.click_loc):
-                        # color = Colors.BLUE
-                        inner_pen = qp.pen()
-                        inner_pen.setWidth(6)
-                        inner_pen.setColor(Colors.BLUE)
-                        qp.setPen(inner_pen)
-                        inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
-                        qp.drawArc(inner_rect, 0, 360*16)
+                        color = Colors.BLUE
+                        # inner_pen = qp.pen()
+                        # inner_pen.setWidth(6)
+                        # inner_pen.setColor(Colors.BLUE)
+                        # qp.setPen(inner_pen)
+                        # inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
+                        # qp.drawArc(inner_rect, 0, 360*16)
                     
                     
                     # elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
@@ -234,6 +242,7 @@ class Circler(QtGui.QWidget):
                     xformed = np.median(self.projected_cursor, 0)
                     qp = QtGui.QPainter()
                     qp.begin(self)
+                    qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
                     color = Colors.BLUE
                     qp.setPen(color)
                     pen = qp.pen()
