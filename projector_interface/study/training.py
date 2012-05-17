@@ -13,11 +13,19 @@ xmax =  0.06501853
 ymin =  0.03261997
 ymax =  0.50817382
 
-services.clear_hilights()
-
-points = np.array([[xmin+(xmax-xmin)/2, ymin+(ymax-ymin)/2, 0]])
+# xs = np.linspace(xmin,xmax,4)
+ys = np.linspace(ymin,ymax,3)
+xs = np.arange(xmin+0.05, xmax, ys[1] - ys[0])
+xx, yy = np.meshgrid(xs, ys)
+points = np.array([(x,y,0) for x,y in zip(xx.ravel(), yy.ravel())])
 points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
 topics.object_cloud(points_msg)
+services.set_selection_method(0)
+services.clear_hilights()
+
+# points = np.array([[xmin+(xmax-xmin)/2, ymin+(ymax-ymin)/2, 0]])
+# points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
+# topics.object_cloud(points_msg)
 
 def shutdown(event):
     pt = PointStamped()
