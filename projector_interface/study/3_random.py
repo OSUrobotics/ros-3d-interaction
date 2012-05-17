@@ -34,7 +34,7 @@ history_size = 0
 
 start_time = now()
 for idx in range(len(points)*2):
-    point = points[idx]
+    point = choice(points)
     targets.append(point)
     print 'hilighting ', point
     services.clear_hilights()

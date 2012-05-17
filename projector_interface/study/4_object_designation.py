@@ -80,7 +80,7 @@ for idx in reversed(list(chain(*order))):
     sleep(3)
         
 services.clear_hilights()
-path = '/home/robotics/lazewatskyd/ros-pkgs/wu-ros-pkg/3d_interaction/projector_interface/study/data/3_object_designation_%s.mat'
+path = '/home/robotics/lazewatskyd/ros-pkgs/wu-ros-pkg/3d_interaction/projector_interface/study/data/4_object_designation_%s.mat'
 timestr = datetime.datetime.today().strftime('%d-%m-%y-%H.%M.%f')
 scipy.io.savemat(path % timestr,    dict(targets=targets,
                                          stds=stds,

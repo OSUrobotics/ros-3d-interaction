@@ -31,11 +31,15 @@ def shutdown(event):
     pt = PointStamped()
     pt.header.frame_id = '/table'
     pt.header.stamp = now()
-    pt.point.x, pt.point.y, pt.point.z = points[0]
     
+    points = np.array([[100,100,100]])
+    points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
+    topics.object_cloud(points_msg)
+    pt.point.x, pt.point.y, pt.point.z = points[0]
     services.hilight_object(pt, ColorRGBA(0,0,0,0))
+    
     rospy.signal_shutdown(0)
     
-rospy.Timer(rospy.Duration(120), shutdown, oneshot=True)
+rospy.Timer(rospy.Duration(10), shutdown, oneshot=True)
 
 rospy.spin()
