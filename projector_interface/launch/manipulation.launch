@@ -3,8 +3,9 @@
     <arg name="use_left_arm" default="false"/>
 	<arg name="use_task_cartesian" default="false"/>
 	
+	<!-- manipulation -->
 	<include file="$(find pr2_object_manipulation_launch)/launch/pr2_manipulation.launch">
-		<arg name="use_slip_controllers" value="$(arg use_slip_controllers)"/>
+		<arg name="use_slip_controllers" value="false"/>
 		<arg name="use_left_arm" value="$(arg use_left_arm)"/>
 		<arg name="use_right_arm" value="$(arg use_right_arm)"/>
 		<arg name="use_task_cartesian" value="$(arg use_task_cartesian)"/>
@@ -13,4 +14,12 @@
 	     value="/objects_database_node/database_grasp_planning" />
 	<param name="/object_manipulator/default_robust_planner" 
 	     value="/plan_robust_grasp" />
+		 
+	<!-- tabletop collision map processing -->
+	<node pkg="tabletop_collision_map_processing" name="tabletop_collision_map_processing" 
+	   type="tabletop_collision_map_processing_node" respawn="false" output="screen"/>
+	<param name="tabletop_collision_map_processing/get_model_mesh_srv" 
+	    value="/objects_database_node/get_model_mesh" />
+	<param name="tabletop_collision_map_processing/static_map_cloud_name" value="full_cloud_filtered" />
+		 
 </launch>
