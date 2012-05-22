@@ -1,0 +1,16 @@
+<launch>
+    <arg name="use_right_arm" default="true"/>
+    <arg name="use_left_arm" default="false"/>
+	<arg name="use_task_cartesian" default="false"/>
+	
+	<include file="$(find pr2_object_manipulation_launch)/launch/pr2_manipulation.launch">
+		<arg name="use_slip_controllers" value="$(arg use_slip_controllers)"/>
+		<arg name="use_left_arm" value="$(arg use_left_arm)"/>
+		<arg name="use_right_arm" value="$(arg use_right_arm)"/>
+		<arg name="use_task_cartesian" value="$(arg use_task_cartesian)"/>
+	</include>
+	<param name="/object_manipulator/default_database_planner" 
+	     value="/objects_database_node/database_grasp_planning" />
+	<param name="/object_manipulator/default_robust_planner" 
+	     value="/plan_robust_grasp" />
+</launch>
