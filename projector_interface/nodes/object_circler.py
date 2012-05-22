@@ -43,7 +43,7 @@ class Circler(QtGui.QWidget):
     int_projected_objects = None
     int_ages = []
     click = rospy.Time(0)
-    click_loc = np.float64([[-1,-1,-1]])
+    click_loc = np.float64([-1,-1,-1])
     click_duration = rospy.Duration(2.0)
     
     selected_pt = np.array([])
@@ -51,7 +51,7 @@ class Circler(QtGui.QWidget):
     use_selected_thresh = True
     
     cursor_pts = None
-    projected_cursor = deque([], rospy.get_param('~/window_size', 5))
+    projected_cursor = deque([], rospy.get_param('~/window_size', 10))
     cursor_pts_xyz = deque([], rospy.get_param('~/window_size', 10))
     
     model = None
@@ -120,7 +120,7 @@ class Circler(QtGui.QWidget):
             self.cursor_header = msg.header
             self.cursor_pts = objects
             transformed_pts = self.projectPoints(self.cursor_pts, msg.header)
-            self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
+            #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
     def projectPoints(self, points, point_header):
@@ -275,7 +275,7 @@ class Circler(QtGui.QWidget):
         while not (rospy.Time.now() - self.click) < self.click_duration:
             rospy.sleep(0.05)
         with self.cursor_lock:
-            msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
+            msg = xyz_array_to_pointcloud2(np.array([list(p) + [0] for p in self.projected_cursor]))
             msg.header.frame_id = '/table'
             msg.header.stamp = rospy.Time.now()
             
