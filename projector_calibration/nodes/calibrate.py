@@ -36,11 +36,10 @@ class Calibrator(object):
 		return imrgb
 
 	def calibrate(self, *args):
-		print 'calibrate'
 		# TODO wait until we can detect a checkerboard
+		print 'waiting...'
 		while not self.image and not rospy.is_shutdown():
 			rospy.sleep(0.1)
-			print 'waiting'
 		print 'ready'
 		im1 = bridge.imgmsg_to_cv(self.image)
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
