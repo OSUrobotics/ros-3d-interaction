@@ -1,7 +1,26 @@
 <launch>
-    <arg name="use_right_arm" default="true"/>
-    <arg name="use_left_arm" default="false"/>
+	<arg name="use_right_arm" default="true"/>
+	<arg name="use_left_arm" default="true"/>
 	<arg name="use_task_cartesian" default="false"/>
+
+	<include file="$(find external_camera_localizer)/launch/pr2_static.launch"/>
+
+	<include file="$(find pr2_object_manipulation_launch)/launch/pr2_manipulation_prerequisites.launch">
+	    <arg name="stereo" value="true"/>
+	    <arg name="use_left_arm" value="$(arg use_left_arm)"/>
+	    <arg name="use_right_arm" value="$(arg use_right_arm)"/>
+	    <arg name="log_to_warehouse" value="false"/>
+	</include>
+	
+	
+    <!-- object database -->
+    <param name="/household_objects_database/database_host" value="wgs36"/>
+    <param name="/household_objects_database/database_port" value="5432"/>
+    <param name="/household_objects_database/database_user" value="willow"/>
+    <param name="/household_objects_database/database_pass" value="willow"/>
+    <param name="/household_objects_database/database_name" value="household_objects"/>
+    <node pkg="household_objects_database" name="objects_database_node" type="objects_database_node" 
+      respawn="true" output="screen"/>
 	
 	<!-- manipulation -->
 	<include file="$(find pr2_object_manipulation_launch)/launch/pr2_manipulation.launch">

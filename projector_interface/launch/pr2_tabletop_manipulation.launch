@@ -1,6 +1,6 @@
 <launch>
   <!-- set stereo to true for narrow stereo, false for kinect -->
-  <arg name="stereo" default="true" />
+  <arg name="stereo" default="false" />
   <arg name="use_slip_controllers" default="false"/>
   <arg name="use_right_arm" default="true"/>
   <arg name="use_left_arm" default="true"/>
