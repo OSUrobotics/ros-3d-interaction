@@ -53,6 +53,8 @@ def broadcast_table_frame(args):
     with tf_lock:
         trans, rot = pm.toTf(pm.fromMsg(table_pose.pose))
         br.sendTransform(trans, rot, rospy.Time.now(), '/table', table_pose.header.frame_id)
+        br.sendTransform(trans, rot, rospy.Time.now() + rospy.Duration(0.005), '/table', table_pose.header.frame_id)
+        br.sendTransform(trans, rot, rospy.Time.now() - rospy.Duration(0.005), '/table', table_pose.header.frame_id)
 
 def set_table_filter_limits(table, clients):
     for field, client in clients.iteritems():
