@@ -132,7 +132,10 @@ class Circler(QtGui.QWidget):
         pts_out = []
         for point in points[0]:
             pt = PointStamped()
-            pt.point.x, pt.point.y, pt.point.z = point.tolist()
+            try:
+                pt.point.x, pt.point.y, pt.point.z = point.tolist()
+            except Exception:
+                print 'Error: ', point
             stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
             pt.header = point_header
             pt.header.stamp = stamp
@@ -238,26 +241,32 @@ class Circler(QtGui.QWidget):
                     qp.end()
                     
             # draw any polygons
-            # print self.click_loc
             qp = QtGui.QPainter()
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
             for name, polygon in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
-                points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]]), polygon.header)
+                pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
+                points = self.projectPoints(pts_arr, polygon.header)
                 points = cv2.perspectiveTransform(points, self.H)
                 
                 color = Colors.WHITE
                 if pnpoly(xformed[0], xformed[1], points[0]):
                     color = Colors.GREEN
-                    # if 
+                    self.selected_pt = np.array(pts_arr.squeeze().mean(0))
+                    
+                # print self.selected_pt
+                selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
+                selected_pt_xformed = cv2.perspectiveTransform(selected_pt_xformed, self.H).squeeze()
+                # print selected_pt_xformed
+                if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
+                    color = Colors.BLUE
             
                 qp.setPen(color)
                 pen = qp.pen()
                 pen.setWidth(5)
                 qp.setPen(pen)
-                
                 
                 points[0] = ([600, 800] - points[0]) + [Y_OFFSET, X_OFFSET]
                 
@@ -332,18 +341,7 @@ class Circler(QtGui.QWidget):
         rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
-        
-        # testing
-        # from geometry_msgs.msg import PolygonStamped, Point
-        # polygon = PolygonStamped()
-        # polygon.header.stamp = rospy.Time.now()
-        # polygon.header.frame_id = 'table'
-        # polygon.polygon.points.append(Point(0.0,0.0,0.0))
-        # polygon.polygon.points.append(Point(0.2,0.0,0.0))
-        # polygon.polygon.points.append(Point(0.2,0.2,0.0))
-        # polygon.polygon.points.append(Point(0.0,0.2,0.0))
-        # self.polygons['TEST'] = polygon
-        
+                
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(100)
         timer.timeout.connect(self.update)
