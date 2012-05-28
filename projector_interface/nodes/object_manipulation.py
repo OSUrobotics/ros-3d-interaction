@@ -1,17 +1,38 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('projector_interface')
 from pr2_pick_and_place_demos.pick_and_place_manager import PickAndPlaceManager
-from geometry_msgs.msg import PointStamped, PoseStamped
-from projector_interface.srv import GetCursorStats
+from geometry_msgs.msg import PointStamped, PoseStamped, PolygonStamped
+from projector_interface.srv import GetCursorStats, DrawPolygon
 from std_msgs.msg import Empty
 from threading import RLock
 import rospy
+from matplotlib.nxutils import pnpoly
 from pr2_python.geometry_tools import euler_to_quaternion
 from object_manipulation_msgs.msg import ManipulationResult
 from copy import deepcopy
 
 NOTGRASPING = 0
 GRASPING    = 1
+
+x =  0.1405776
+y = -0.03434887
+w = 0.3
+h = 0.2
+
+RECYCLING = PolygonStamped()
+TRASH     = PolygonStamped()
+RECYCLING.header.frame_id = 'table'
+TRASH.header.frame_id     = 'table'
+
+RECYCLING.polygon.points.append(Point(x    , y    ,  0.))
+RECYCLING.polygon.points.append(Point(x - w, y    ,  0.))
+RECYCLING.polygon.points.append(Point(x - w, y + h,  0.))
+RECYCLING.polygon.points.append(Point(x    , y + h,  0.))
+
+TRASH.polygon.points.append(    Point(x    , y + h + 0.01    ,  0.))
+TRASH.polygon.points.append(    Point(x - w, y + h + 0.01    ,  0.))
+TRASH.polygon.points.append(    Point(x - w, y + h + 0.01 + h,  0.))
+TRASH.polygon.points.append(    Point(x    , y + h + 0.01 + h,  0.))
 
 class Manipulator(object):
     state = NOTGRASPING
@@ -24,6 +45,12 @@ class Manipulator(object):
         self.manager = PickAndPlaceManager()
         self.cursor_proxy = rospy.ServiceProxy('get_cursor_stats', GetCursorStats)
         self.cursor_proxy.wait_for_service()
+        self.polygon_proxy = rospy.ServiceProxy('draw_polygon', DrawPolygon)
+        self.polygon_proxy.wait_for_service()
+        
+        self.polygon_proxy('Recycling', True, RECYCLING)
+        self.polygon_proxy('Garbage', True, TRASH)
+        
     
     def click(self, msg):
         if self.click_lock.acquire(blocking=False):
@@ -80,7 +107,18 @@ class Manipulator(object):
             place_pose.pose.position.z = 0
             rospy.loginfo('Placing at %s' % place_pose)
             self.place_viz_pub.publish(place_pose)
-            self.manager.set_place_area(place_pose, (0.1,0.1))
+            # see if it's in one of our predefined boxes
+            
+            pw,ph = 0.1,0.1
+            
+            for polygon in [TRASH, RECYCLING]:
+                pts_arr = np.array([[(p.x,p.y) for p in polygon.polygon.points]])
+                if pnpoly(ptt.point.x, ptt.point.y, pts_arr.squeeze()):
+                    # we're doing this from the top right corner (don't ask)
+                    place_pose.position = polygon.polygon.points[0]
+                    pw,ph = w,h
+                    
+            self.manager.set_place_area(place_pose, (pw,ph))
             #status = self.manager.place_object(self.grasp_arm, place_pose, padding=0) 
             status = self.manager.put_down_object(self.grasp_arm, max_place_tries=25, use_place_override=1)
             if status == ManipulationResult.SUCCESS:
@@ -94,7 +132,3 @@ if __name__ == '__main__':
     rospy.Subscriber('intersected_point', PointStamped, manipulator.point_cb)
     rospy.loginfo('READY')
     rospy.spin()
-    # r = rospy.Rate(5)
-    # while not rospy.is_shutdown():
-    #     manipulator.manager.call_tabletop_detection()
-    #     r.sleep()
