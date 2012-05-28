@@ -18,12 +18,16 @@ from collections import deque
 from threading import RLock
 import sys
 
+from matplotlib.nxutils import pnpoly
+
 import PySide
 from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 
 X_OFFSET =  25
 Y_OFFSET = -25
+
+CLICK_RESET = np.float64([[-1,-1,-1]])
 
 CURSOR_OFFSET = np.array([0,25])
 
@@ -195,37 +199,13 @@ class Circler(QtGui.QWidget):
                        (not self.use_selected_thresh and all(xformed==closest_pt)):
                         self.selected_pt = pt
                         color = Colors.GREEN
-                            
-                            # if not self.sameObject(pt, self.click_loc):
-                            #     sel_pt = PointStamped()
-                            #     sel_pt.header.stamp = rospy.Time.now()
-                            #     sel_pt.header.frame_id = self.object_header.frame_id
-                            #     sel_pt.point.x, sel_pt.point.y, sel_pt.point.z = pt.tolist()
-                            #     self.selected_pub.publish(sel_pt)
-                            # self.click_loc = pt
-                            
+                    else:
+                        self.selected_pt = CLICK_RESET
+                                                        
                     # is it the clicked point?
-                    # if ((rospy.Time.now() - self.click) < self.click_duration) and\
-                    #    (self.sameObject(pt, self.click_loc)):
                     if self.sameObject(pt, self.click_loc):
                         color = Colors.BLUE
-                        # inner_pen = qp.pen()
-                        # inner_pen.setWidth(6)
-                        # inner_pen.setColor(Colors.BLUE)
-                        # qp.setPen(inner_pen)
-                        # inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET + 5, 600-xformed[0]-r/2 + Y_OFFSET + 5, r-10, r-10)
-                        # qp.drawArc(inner_rect, 0, 360*16)
                     
-                    
-                    # elif ((rospy.Time.now() - self.click) < self.click_duration) and self.sameObject(pt, self.click_loc):
-                    #     # color = Colors.BLUE
-                    #     inner_pen = qp.pen()
-                    #     inner_pen.setWidth(5)
-                    #     inner_pen.setColor(Colors.BLUE)
-                    #     qp.setPen(inner_pen)
-                    #     inner_rect = QtCore.QRectF(800-xformed[1]-r/2 + X_OFFSET, 600-xformed[0]-r/2 + Y_OFFSET, r-5, r-5)
-                    #     qp.drawArc(inner_rect, 0, 360*16)
-                    #     self.click_loc = pt # maybe this shouldn't be here
                     qp.setPen(color)
                     pen = qp.pen()
                     pen.setWidth(5)
@@ -258,31 +238,32 @@ class Circler(QtGui.QWidget):
                     qp.end()
                     
             # draw any polygons
-            
+            # print self.click_loc
             qp = QtGui.QPainter()
             qp.begin(self)
-            qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
-            color = Colors.WHITE
-            qp.setPen(color)
-            pen = qp.pen()
-            pen.setWidth(5)
-            qp.setPen(pen)
-            
-            
+            qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+                        
             for name, polygon in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]]), polygon.header)
                 points = cv2.perspectiveTransform(points, self.H)
                 
+                color = Colors.WHITE
+                if pnpoly(xformed[0], xformed[1], points[0]):
+                    color = Colors.GREEN
+                    # if 
+            
+                qp.setPen(color)
+                pen = qp.pen()
+                pen.setWidth(5)
+                qp.setPen(pen)
+                
+                
                 points[0] = ([600, 800] - points[0]) + [Y_OFFSET, X_OFFSET]
                 
                 for point in points[0]:
                     poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
-                    # qp.drawPoint(point[1], point[0])
             
-                # print points[0]
-                #             
-                #             
                 qp.drawPolygon(poly)
                 origin = points[0].min(0)
                 size = points[0].max(0) - origin
@@ -291,7 +272,7 @@ class Circler(QtGui.QWidget):
             
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
-            self.click_loc = np.float64([[-1,-1,-1]])
+            self.click_loc = CLICK_RESET
             self.click_duration = rospy.Duration(2.0)
                  
     def handle_hilight(self, req):
