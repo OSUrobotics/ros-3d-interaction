@@ -63,6 +63,7 @@ class Circler(QtGui.QWidget):
     cursor_lock = RLock()
     
     hilights = []
+    polygons = dict()
     
     def escHandler(self, e):
         sys.exit(0)
@@ -256,6 +257,38 @@ class Circler(QtGui.QWidget):
                     
                     qp.end()
                     
+            # draw any polygons
+            
+            qp = QtGui.QPainter()
+            qp.begin(self)
+            qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
+            color = Colors.WHITE
+            qp.setPen(color)
+            pen = qp.pen()
+            pen.setWidth(5)
+            qp.setPen(pen)
+            
+            
+            for name, polygon in self.polygons.iteritems():
+                poly = PySide.QtGui.QPolygon()
+                points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]]), polygon.header)
+                points = cv2.perspectiveTransform(points, self.H)
+                
+                points[0] = ([600, 800] - points[0]) + [Y_OFFSET, X_OFFSET]
+                
+                for point in points[0]:
+                    poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+                    # qp.drawPoint(point[1], point[0])
+            
+                # print points[0]
+                #             
+                #             
+                qp.drawPolygon(poly)
+                origin = points[0].min(0)
+                size = points[0].max(0) - origin
+                textRect = QtCore.QRectF(origin[1],origin[0],size[1],size[0])
+                qp.drawText(textRect, QtCore.Qt.AlignCenter, name)
+            
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
             self.click_loc = np.float64([[-1,-1,-1]])
@@ -291,6 +324,10 @@ class Circler(QtGui.QWidget):
             self.use_selected_thresh = False
         return projector_interface.srv.SetSelectionMethodResponse()
 
+    def handle_draw_polygon(self, req):
+        self.polygons[req.name] = req.polygon
+        return projector_interface.srv.DrawPolygonResponse()
+
     def __init__(self):
         super(Circler, self).__init__()
         self.tfl = tf.TransformListener()
@@ -311,8 +348,21 @@ class Circler(QtGui.QWidget):
         rospy.Service('clear_hilights', projector_interface.srv.ClearHilights, self.handle_clear_hilight)
         rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
         rospy.Service('set_selection_method', projector_interface.srv.SetSelectionMethod, self.set_selection_method)
+        rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
+        
+        # testing
+        # from geometry_msgs.msg import PolygonStamped, Point
+        # polygon = PolygonStamped()
+        # polygon.header.stamp = rospy.Time.now()
+        # polygon.header.frame_id = 'table'
+        # polygon.polygon.points.append(Point(0.0,0.0,0.0))
+        # polygon.polygon.points.append(Point(0.2,0.0,0.0))
+        # polygon.polygon.points.append(Point(0.2,0.2,0.0))
+        # polygon.polygon.points.append(Point(0.0,0.2,0.0))
+        # self.polygons['TEST'] = polygon
+        
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(100)
         timer.timeout.connect(self.update)
