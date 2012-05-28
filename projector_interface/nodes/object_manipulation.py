@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('projector_interface')
 from pr2_pick_and_place_demos.pick_and_place_manager import PickAndPlaceManager
-from geometry_msgs.msg import PointStamped, PoseStamped, PolygonStamped
+from geometry_msgs.msg import PointStamped, PoseStamped, PolygonStamped, Point
 from projector_interface.srv import GetCursorStats, DrawPolygon
 from std_msgs.msg import Empty
 from threading import RLock
@@ -10,6 +10,7 @@ from matplotlib.nxutils import pnpoly
 from pr2_python.geometry_tools import euler_to_quaternion
 from object_manipulation_msgs.msg import ManipulationResult
 from copy import deepcopy
+import numpy as np
 
 NOTGRASPING = 0
 GRASPING    = 1
@@ -115,7 +116,7 @@ class Manipulator(object):
                 pts_arr = np.array([[(p.x,p.y) for p in polygon.polygon.points]])
                 if pnpoly(ptt.point.x, ptt.point.y, pts_arr.squeeze()):
                     # we're doing this from the top right corner (don't ask)
-                    place_pose.position = polygon.polygon.points[0]
+                    place_pose.pose.position = polygon.polygon.points[0]
                     pw,ph = w,h
                     
             self.manager.set_place_area(place_pose, (pw,ph))
