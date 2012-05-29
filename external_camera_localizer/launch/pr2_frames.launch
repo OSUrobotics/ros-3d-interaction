@@ -1,6 +1,6 @@
 <launch>
-	<arg name="external_camera" default="external_camera" />
-	<arg name="overhead_camera" default="overhead_kinect" />
+	<arg name="external_camera" default="camera1" />
+	<arg name="overhead_camera" default="camera2" />
 
 	<node pkg="external_camera_localizer" type="transform_pointcloud" name="transform_external">
 		<remap from="cloud" to="$(arg external_camera)/depth/points"/>

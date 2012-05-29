@@ -11,7 +11,7 @@ load('rosh_robot', globals())
         # exit(1)
     
 topic1 = '/laser_cloud_converted'
-topic2 = '/external_camera/transformed'
+topic2 = '/camera1/transformed'
 
 print 'Waiting for', topic1
 cloud1 = topics[topic1][0]
