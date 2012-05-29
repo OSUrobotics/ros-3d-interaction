@@ -1,16 +1,4 @@
-<launch>
-<!--
-    <node pkg="tf" type="static_transform_publisher" name="world_to_tag" 
-        args="-0.212, -0.069,  0.286,  0.021, -1.305, 3.082 world 4x4_1 100"/>
-
-    <node pkg="tf" type="static_transform_publisher" name="tag_to_odom_combined" 
-        args="-0.609, -0.280, -0.780, -0.004,  0.002, 0.125 4x4_1 odom_combined 100"/>
-
--->
-    <node pkg="tf" type="static_transform_publisher" name="world_to_tag" 
-        args="-0.204, -0.117, 0.248, 0.601, -0.084, 0.788, -0.099 world 4x4_1 100"/>
-
-    <node pkg="tf" type="static_transform_publisher" name="tag_to_odom_combined" 
-        args="-0.666, -0.147, -0.748, -0.012, 0.010, -0.093, 0.996 4x4_1 odom_combined 100"/>
-
+<launch>	
+	<node pkg="tf" type="static_transform_publisher" name="world_to_odom_combined" 
+	        args="-0.819, 0.262, -0.483, 0.609, -0.022, 0.793, -0.017 world odom_combined 100"/>
 </launch>
