@@ -1,8 +1,7 @@
 <stack>
   <description brief="3d_interaction">3d_interaction</description>
-  <author>Maintained by Lazewatsky Daniel</author>
+  <author>Maintained by Daniel Lazewatsky</author>
   <license>BSD</license>  
-  <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/3d_interaction</url>
   <depend stack="accessible_interfaces" /> <!-- brain_stuff -->
   <depend stack="common_msgs" /> <!-- geometry_msgs, sensor_msgs -->
