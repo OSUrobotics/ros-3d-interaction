@@ -140,7 +140,7 @@ int main(int argc, char* argv[]) {
 	pnh.param("octree_resolution", g_resolution,   0.02);
 	pnh.param("min_dist",          g_min_dist,     DBL_MAX);
 	
-	listener = new tf::TransformListener();
+	listener = new tf::TransformListener(ros::Duration(45));
 	broadcaster = new tf::TransformBroadcaster();
     cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
     point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
