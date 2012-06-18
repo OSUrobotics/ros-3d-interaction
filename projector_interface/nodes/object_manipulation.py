@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('projector_interface')
 from pr2_pick_and_place_demos.pick_and_place_manager import PickAndPlaceManager
-from geometry_msgs.msg import PointStamped, PoseStamped, PolygonStamped, Point, PointCloud2
+from geometry_msgs.msg import PointStamped, PoseStamped, PolygonStamped, Point
+from sensor_msgs.msg import PointCloud2
 from projector_interface.srv import GetCursorStats, DrawPolygon, CircleInhibit
 from std_msgs.msg import Empty
 from threading import RLock
@@ -78,6 +79,7 @@ class Manipulator(object):
         cloud = read_points_np(msg)
         point = PointStamped()
         point.header = msg.header
+        if cloud.shape[1] == 0: return
         point.point.x, point.point.y, point.point.z = cloud[0][0]
         self.point = point
     
@@ -146,6 +148,6 @@ if __name__ == '__main__':
     rospy.init_node('manipulator')
     manipulator = Manipulator()
     rospy.Subscriber('click', Empty, manipulator.click, queue_size=1)
-    rospy.Subscriber('intersected_point', PointCloud2, manipulator.point_cb)
+    rospy.Subscriber('intersected_points', PointCloud2, manipulator.point_cb)
     rospy.loginfo('READY')
     rospy.spin()
