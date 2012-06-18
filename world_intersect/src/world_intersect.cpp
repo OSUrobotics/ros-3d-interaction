@@ -35,7 +35,6 @@ class NeverEmptyQueue : public std::queue<T>
 };
 
 
-
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 typedef std::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ> > AlignedPointTVector;
 
@@ -43,6 +42,8 @@ ros::Publisher cloud_pub;
 ros::Publisher point_pub;
 tf::TransformListener* listener;
 tf::TransformBroadcaster* broadcaster;
+tf::StampedTransform g_transform;
+bool g_transform_ready = false;
 
 sensor_msgs::PointCloud2ConstPtr   g_cloud;
 geometry_msgs::PoseStampedConstPtr g_pose;
@@ -70,7 +71,6 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 	sensor_msgs::PointCloud2 cloud_transformed;
 	std::string vector_frame = pose->header.frame_id;
 	ros::Time stamp = (cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
-	
 	if(!((pose->pose.position.x == 0) && (pose->pose.position.y) == 0 && (pose->pose.position.z == 0))) {
 		//ROS_WARN("Expecting point to be the origin of its coordinate frame, but it isn't");
 		tf::Transform trans;
@@ -86,28 +86,26 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 			pose->pose.orientation.w
 		));
 		vector_frame = g_vector_frame;
-		broadcaster->sendTransform(tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame));
+		g_transform = tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame);
+		g_transform_ready = true;
+		// broadcaster->sendTransform(tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame));
 	}
-	
 	listener->waitForTransform(cloud_msg->header.frame_id, vector_frame, stamp, ros::Duration(2.0));
 	pcl_ros::transformPointCloud(vector_frame, *cloud_msg, cloud_transformed, *listener);
 	int tPoints = cloud_transformed.width*cloud_transformed.height;
 	if(tPoints == 0) return;
-	
 	PointCloud cloud;
 	pcl::fromROSMsg(cloud_transformed, cloud);
 	
 	pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> octree (g_resolution);
 	octree.setInputCloud(cloud.makeShared());
 	octree.addPointsFromInputCloud();
-	
+
 	Eigen::Vector3f    origin(0, 0, 0);
 	Eigen::Vector3f direction(RAND_MAX, 0.0f, 0.0f);
 	std::vector<int> k_indices;
-	
+
 	int nPoints = octree.getIntersectedVoxelIndices(origin, direction, k_indices);
-	//ROS_INFO("vector intersected %d voxels", nPoints);
-	
 	PointCloud::Ptr out (new PointCloud);
 	out->header.frame_id = vector_frame;
 	for(int i=0; i<nPoints; i++) {
@@ -117,17 +115,14 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 				out->points.push_back(cloud.points[k_indices[i]]);
 		}
 	}
-	//ROS_INFO("%d: Point is: x=%f, y=%f, z=%f", k_indices[1], cloud.points[k_indices[1]].x, cloud.points[k_indices[1]].y, cloud.points[k_indices[1]].z);
 	out->header.stamp = ros::Time::now();
 	cloud_pub.publish(out);
-	
-	if(nPoints > 0) {
-		geometry_msgs::PointStamped pt;
-		pt.header = out->header;
-		pt.point.x = out->points[0].x;
-		pt.point.y = out->points[0].y;
-		pt.point.z = out->points[0].z;
-		point_pub.publish(pt);
+}
+
+void sendTransform(const ros::TimerEvent& te) {
+	if(g_transform_ready) {
+		g_transform.stamp_ = ros::Time::now();
+		broadcaster->sendTransform(g_transform);
 	}
 }
 
@@ -153,6 +148,8 @@ int main(int argc, char* argv[]) {
 		ros::spinOnce();
 		rate.sleep();
 	}
+
+	ros::Timer timer = nh.createTimer(ros::Duration(0.05), sendTransform, false);
 
 	while(ros::ok()) {
 		//sensor_msgs::PointCloud2ConstPtr& c = g_cloud_queue.front();
