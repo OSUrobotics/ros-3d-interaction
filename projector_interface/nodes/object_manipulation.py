@@ -121,8 +121,10 @@ class Manipulator(object):
             # see if it's in one of our predefined boxes
             
             pw,ph = 0.1,0.1
-            
-            for name, polygon in [('TRASH', TRASH), ('RECYCLING', RECYCLING)]:
+       
+            #boxes = [('TRASH', TRASH), ('RECYCLING', RECYCLING)]
+            boxes = []
+            for name, polygon in boxes:
                 pts_arr = np.array([[(p.x,p.y) for p in polygon.polygon.points]])
                 print pts_arr
                 if pnpoly(ptt.point.x, ptt.point.y, pts_arr.squeeze()):
@@ -136,7 +138,9 @@ class Manipulator(object):
                     
             rospy.loginfo('Placing at %s' % place_pose)
             self.place_viz_pub.publish(place_pose)
-                    
+            
+            #import pdb; pdb.set_trace()
+
             self.manager.set_place_area(place_pose, (pw,ph))
             # status = self.manager.place_object(self.grasp_arm, place_pose, padding=0) 
             status = self.manager.put_down_object(self.grasp_arm, max_place_tries=25, use_place_override=1)

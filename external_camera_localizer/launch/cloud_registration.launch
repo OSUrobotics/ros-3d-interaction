@@ -1,8 +1,8 @@
 <launch>
-  <arg name="fixed_frame" default="map"/>
+  <arg name="fixed_frame" default="odom_combined"/>
   <node pkg="pr2_mechanism_controllers" type="send_periodic_cmd_srv.py"
     name="laser_cmd"
-    args="laser_tilt_controller linear 10 1 .35" />
+    args="laser_tilt_controller linear 8 1 .35" />
 	
   <node type="laser_scan_assembler" pkg="laser_assembler" name="tilt_scan_assembler" respawn="true">
     <remap from="scan" to="tilt_scan"/>

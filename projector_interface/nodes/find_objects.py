@@ -85,15 +85,15 @@ if __name__ == '__main__':
     detect_srv = rospy.ServiceProxy('/tabletop_segmentation', TabletopSegmentation)
     detect_srv.wait_for_service()
     Thread(target=rospy.Timer(rospy.Duration(0.05), broadcast_table_frame).run)
-    clients = dict(
-        x = dynamic_reconfigure.client.Client('xfilter', timeout=float('inf')),
-        y = dynamic_reconfigure.client.Client('yfilter', timeout=float('inf')),
-        z = dynamic_reconfigure.client.Client('zfilter', timeout=float('inf'))
-    )
+    #clients = dict(
+    #    x = dynamic_reconfigure.client.Client('xfilter', timeout=float('inf')),
+    #    y = dynamic_reconfigure.client.Client('yfilter', timeout=float('inf')),
+    #    z = dynamic_reconfigure.client.Client('zfilter', timeout=float('inf'))
+    #)
     while not rospy.is_shutdown():
         object_cloud, table = detect(detect_srv)
         if object_cloud is not None:
             with tf_lock:
                 table_pose = table.pose
-            set_table_filter_limits(table, clients)
+            #set_table_filter_limits(table, clients)
             object_pub.publish(object_cloud)

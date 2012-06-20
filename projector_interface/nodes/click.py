@@ -12,7 +12,7 @@ def uninhibit(args):
 
 def joy_cb(msg, args):
     global click_inhibit
-    click = msg.buttons[2]
+    click = msg.buttons[16]
     if click and not click_inhibit:
         click_inhibit = True
         args[0].publish()
