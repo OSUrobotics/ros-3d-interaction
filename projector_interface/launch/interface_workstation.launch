@@ -1,0 +1,9 @@
+<launch>
+	<arg name="camera" value="external_camera"/>
+	<include file="$(find head_pose_estimation)/launch/estimator.launch">
+		<arg name="camera" value="$(arg camera)"/>
+	</include>
+	<include file="$(find openni_launch)/launch/openni.launch">
+		<arg name="camera" value="$(arg camera)"/>
+	</include>
+</launch>
