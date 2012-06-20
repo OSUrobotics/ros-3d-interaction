@@ -10,6 +10,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 #include <pcl_ros/transforms.h>
+#include <pcl/io/pcd_io.h>
 
 #include <ros/ros.h>
 #include "sensor_msgs/PointCloud2.h"
@@ -116,7 +117,12 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 		}
 	}
 	out->header.stamp = ros::Time::now();
-	cloud_pub.publish(out);
+	sensor_msgs::PointCloud2 out_msg;
+	pcl::toROSMsg(*out, out_msg); 	
+	sensor_msgs::PointCloud2 out_transformed;
+	listener->waitForTransform(out->header.frame_id, "base_link", ros::Time(0), ros::Duration(2.0));
+	pcl_ros::transformPointCloud("base_link", out_msg, out_transformed, *listener);
+	cloud_pub.publish(out_transformed);
 }
 
 void sendTransform(const ros::TimerEvent& te) {
@@ -137,7 +143,8 @@ int main(int argc, char* argv[]) {
 	
 	listener = new tf::TransformListener(ros::Duration(45));
 	broadcaster = new tf::TransformBroadcaster();
-    cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
+    //cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
+    cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("intersected_points", 1);
     point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
 
 	ros::Subscriber cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("cloud", 1, cloudCallback);
