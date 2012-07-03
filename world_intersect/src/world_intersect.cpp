@@ -71,7 +71,7 @@ void poseCallback(const geometry_msgs::PoseStampedConstPtr& pose) {
 void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geometry_msgs::PoseStampedConstPtr& pose) {
 	sensor_msgs::PointCloud2 cloud_transformed;
 	std::string vector_frame = pose->header.frame_id;
-	ros::Time stamp = (cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
+	ros::Time stamp = ros::Time(0);//(cloud_msg->header.stamp > pose->header.stamp) ? cloud_msg->header.stamp : pose->header.stamp;
 	if(!((pose->pose.position.x == 0) && (pose->pose.position.y) == 0 && (pose->pose.position.z == 0))) {
 		//ROS_WARN("Expecting point to be the origin of its coordinate frame, but it isn't");
 		tf::Transform trans;
@@ -91,8 +91,10 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 		g_transform_ready = true;
 		// broadcaster->sendTransform(tf::StampedTransform(trans, stamp, pose->header.frame_id, vector_frame));
 	}
+	sensor_msgs::PointCloud2 cloud_msg_copy = *cloud_msg;
+	cloud_msg_copy.header.stamp=ros::Time(0);
 	listener->waitForTransform(cloud_msg->header.frame_id, vector_frame, stamp, ros::Duration(2.0));
-	pcl_ros::transformPointCloud(vector_frame, *cloud_msg, cloud_transformed, *listener);
+	pcl_ros::transformPointCloud(vector_frame, cloud_msg_copy, cloud_transformed, *listener);
 	int tPoints = cloud_transformed.width*cloud_transformed.height;
 	if(tPoints == 0) return;
 	PointCloud cloud;
@@ -120,6 +122,7 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 	sensor_msgs::PointCloud2 out_msg;
 	pcl::toROSMsg(*out, out_msg); 	
 	sensor_msgs::PointCloud2 out_transformed;
+	out_msg.header.stamp=ros::Time(0);
 	listener->waitForTransform(out->header.frame_id, "base_link", ros::Time(0), ros::Duration(2.0));
 	pcl_ros::transformPointCloud("base_link", out_msg, out_transformed, *listener);
 	cloud_pub.publish(out_transformed);
