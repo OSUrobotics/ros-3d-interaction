@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('projector_interface')
 from tabletop_object_detector.srv import TabletopSegmentation, TabletopSegmentationRequest
+from tabletop_object_detector.msg import Table
+from tabletop_object_detector.msg import Table
 from pr2_python.pointclouds import xyz_array_to_pointcloud2
 from pr2_python.transform_listener import transform_point_stamped, transform_pose_stamped
 from tf import TransformBroadcaster
@@ -81,6 +83,7 @@ def set_table_filter_limits(table, clients):
 if __name__ == '__main__':
     rospy.init_node('find_objects')
     object_pub = rospy.Publisher('object_cloud', PointCloud2)
+    table_pub  = rospy.Publisher('table', Table)
     br = TransformBroadcaster()	
     detect_srv = rospy.ServiceProxy('/tabletop_segmentation', TabletopSegmentation)
     detect_srv.wait_for_service()
@@ -97,3 +100,4 @@ if __name__ == '__main__':
                 table_pose = table.pose
             #set_table_filter_limits(table, clients)
             object_pub.publish(object_cloud)
+            table_pub.publish(table)
