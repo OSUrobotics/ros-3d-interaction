@@ -29,7 +29,7 @@ from PySide import QtOpenGL
 #Y_OFFSET = -25
 
 X_OFFSET = 0
-Y_OFFSET = -230
+Y_OFFSET = 0
 
 CLICK_RESET = np.float64([[-1,-1,-1]])
 
@@ -182,6 +182,9 @@ class Circler(QtGui.QWidget):
         # circle the objects
         r = 150
         
+        self.SCREEN_HEIGHT = self.height()
+        self.SCREEN_WIDTH  = self.width()
+        
         with self.object_lock:
             if self.objects is not None and self.projected_objects is not None:
                 # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
@@ -253,8 +256,8 @@ class Circler(QtGui.QWidget):
                     # if the cursor is on-screen, draw it
                     if cursor_x > 0 and cursor_y > 0 and cursor_x < self.SCREEN_WIDTH and cursor_y < self.SCREEN_HEIGHT:
                         rect = QtCore.QRectF(
-                            cursor_x-r/2 + X_OFFSET,
-                            cursor_y-r/2 + Y_OFFSET,
+                            cursor_x-r/2,# + X_OFFSET,
+                            cursor_y-r/2,# + Y_OFFSET,
                             r,
                             r
                         )
@@ -274,7 +277,7 @@ class Circler(QtGui.QWidget):
                             hint_y = self.SCREEN_HEIGHT
                         
                         
-                        head = np.array([hint_x, hint_y]) + [X_OFFSET, Y_OFFSET]
+                        head = np.array([hint_x, hint_y])# + [X_OFFSET, Y_OFFSET]
                         tail_x, tail_y = 0,0
                         if hint_x == 0:
                             tail_x =  50
@@ -407,10 +410,6 @@ class Circler(QtGui.QWidget):
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
-        geom = app.desktop().screenGeometry()
-        self.SCREEN_WIDTH   = geom.width()
-        self.SCREEN_HEIGHT = geom.height()
-        print 'width=%s, height=%s' % (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
         sys.exit(app.exec_())
         rospy.spin()
 
