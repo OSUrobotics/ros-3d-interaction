@@ -97,7 +97,8 @@ if __name__ == '__main__':
         object_cloud, table = detect(detect_srv)
         if object_cloud is not None:
             with tf_lock:
-                table_pose = table.pose
+                if not table_pose or np.linalg.norm(pt2np(table_pose.pose.position) - pt2np(table.pose.pose.position)) > 0.1:
+                    table_pose = table.pose
             #set_table_filter_limits(table, clients)
             object_pub.publish(object_cloud)
             table_pub.publish(table)
