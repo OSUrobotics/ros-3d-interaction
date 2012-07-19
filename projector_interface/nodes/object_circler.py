@@ -23,18 +23,19 @@ from matplotlib.nxutils import pnpoly
 import PySide
 from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
+from PySide import QtOpenGL
 
 #X_OFFSET =  25
 #Y_OFFSET = -25
 
 X_OFFSET = 0
-Y_OFFSET = 0
+Y_OFFSET = -230
 
 CLICK_RESET = np.float64([[-1,-1,-1]])
 
 CURSOR_OFFSET = np.array([0,25])
 
-SELECT_DIST_THRESH = 50 #ugh, this is in pixels
+SELECT_DIST_THRESH = 75 #ugh, this is in pixels
 SAME_OBJ_THRESH    = 0.03
 
 class Colors:
@@ -43,6 +44,7 @@ class Colors:
     BLUE  = QtGui.QColor(  0,135,189)
 
 class Circler(QtGui.QWidget):
+#class Circler(QtOpenGL.QGLWidget):
     H = None
     objects = None  
     projected_objects = None
@@ -235,6 +237,10 @@ class Circler(QtGui.QWidget):
             with self.object_lock:
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     xformed = np.median(self.projected_cursor, 0)
+                    
+                    cursor_x = self.SCREEN_WIDTH  - xformed[1]
+                    cursor_y = self.SCREEN_HEIGHT - xformed[0]
+                    
                     qp = QtGui.QPainter()
                     qp.begin(self)
                     qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
@@ -243,13 +249,55 @@ class Circler(QtGui.QWidget):
                     pen = qp.pen()
                     pen.setWidth(5)
                     qp.setPen(pen)
-                    rect = QtCore.QRectF(
-                        self.SCREEN_WIDTH  - xformed[1]-r/2 + X_OFFSET,
-                        self.SCREEN_HEIGHT - xformed[0]-r/2 + Y_OFFSET,
-                        r,
-                        r
-                    )
-                    qp.drawArc(rect, 0, 360*16)
+
+                    # if the cursor is on-screen, draw it
+                    if cursor_x > 0 and cursor_y > 0 and cursor_x < self.SCREEN_WIDTH and cursor_y < self.SCREEN_HEIGHT:
+                        rect = QtCore.QRectF(
+                            cursor_x-r/2 + X_OFFSET,
+                            cursor_y-r/2 + Y_OFFSET,
+                            r,
+                            r
+                        )
+                        qp.drawArc(rect, 0, 360*16)
+                    # if the cursor is off screen, draw a hint as to where it is
+                    else:
+                        hint_x = cursor_x
+                        if cursor_x < 0:
+                            hint_x = 0
+                        if cursor_x > self.SCREEN_WIDTH:
+                            hint_x = self.SCREEN_WIDTH
+                            
+                        hint_y = cursor_y
+                        if cursor_y < 0:
+                            hint_y = 0
+                        if cursor_y > self.SCREEN_HEIGHT:
+                            hint_y = self.SCREEN_HEIGHT
+                        
+                        
+                        head = np.array([hint_x, hint_y]) + [X_OFFSET, Y_OFFSET]
+                        tail_x, tail_y = 0,0
+                        if hint_x == 0:
+                            tail_x =  50
+                        if hint_x == self.SCREEN_WIDTH:
+                            tail_x = -50
+                        if hint_y == 0:
+                            tail_y =  50
+                        if hint_y == self.SCREEN_HEIGHT:
+                            tail_y = -50
+                        tail = head + [tail_x, tail_y]
+                        
+                        pen.setWidth(r)
+                        qp.setPen(pen)
+                        
+                        qp.drawLine(head[0],head[1],tail[0],tail[1])                        
+                                                
+                        #rect = QtCore.QRectF(
+                        #    hint_x-r/2,# + X_OFFSET,
+                        #    hint_y-r/2,# + Y_OFFSET,
+                        #    50,
+                        #    50
+                        #)
+                        #qp.drawArc(rect, 0, 360*16)
                     qp.end()
                     
             # draw any polygons
@@ -355,13 +403,14 @@ class Circler(QtGui.QWidget):
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
                 
         timer = PySide.QtCore.QTimer(self)
-        timer.setInterval(100)
+        timer.setInterval(50)
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
         geom = app.desktop().screenGeometry()
         self.SCREEN_WIDTH   = geom.width()
         self.SCREEN_HEIGHT = geom.height()
+        print 'width=%s, height=%s' % (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
         sys.exit(app.exec_())
         rospy.spin()
 
