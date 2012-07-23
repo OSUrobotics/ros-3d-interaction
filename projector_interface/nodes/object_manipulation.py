@@ -18,25 +18,25 @@ from projector_interface._point_cloud import read_points_np
 NOTGRASPING = 0
 GRASPING    = 1
 
-x =  0.1405776
-y = -0.03434887
-w = 0.27
-h = 0.22
-
+x =  0.14744849503040314 - 0.03
+y = -0.49022838473320007 + 0.005
+w = 0.15
+h = 0.21
+p = 0.02
 RECYCLING = PolygonStamped()
 TRASH     = PolygonStamped()
 RECYCLING.header.frame_id = 'table'
 TRASH.header.frame_id     = 'table'
 
 RECYCLING.polygon.points.append(Point(x    , y    ,  0.))
-RECYCLING.polygon.points.append(Point(x - w, y    ,  0.))
-RECYCLING.polygon.points.append(Point(x - w, y + h,  0.))
-RECYCLING.polygon.points.append(Point(x    , y + h,  0.))
+RECYCLING.polygon.points.append(Point(x - h, y    ,  0.))
+RECYCLING.polygon.points.append(Point(x - h, y + w,  0.))
+RECYCLING.polygon.points.append(Point(x    , y + w,  0.))
 
-TRASH.polygon.points.append(    Point(x    , y + h + 0.12    ,  0.))
-TRASH.polygon.points.append(    Point(x - w, y + h + 0.12    ,  0.))
-TRASH.polygon.points.append(    Point(x - w, y + h + 0.12 + h,  0.))
-TRASH.polygon.points.append(    Point(x    , y + h + 0.12 + h,  0.))
+TRASH.polygon.points.append(    Point(x -   (h+p), y,      0.))
+TRASH.polygon.points.append(    Point(x - (2*h+p), y,      0.))
+TRASH.polygon.points.append(    Point(x - (2*h+p), y + w,  0.))
+TRASH.polygon.points.append(    Point(x -   (h+p), y + w,  0.))
 
 class Manipulator(object):
     state = NOTGRASPING
@@ -49,13 +49,16 @@ class Manipulator(object):
         self.manager = PickAndPlaceManager()
         self.cursor_proxy = rospy.ServiceProxy('get_cursor_stats', GetCursorStats)
         #~ self.cursor_proxy.wait_for_service()
+        rospy.loginfo("Waiting for polygon service")
         self.polygon_proxy = rospy.ServiceProxy('draw_polygon', DrawPolygon)
-        #~ self.polygon_proxy.wait_for_service()
+        self.polygon_proxy.wait_for_service()
+        rospy.loginfo("Waiting for circle inhibit service")
         self.circle_inhibit_proxy = rospy.ServiceProxy('circle_inhibit', CircleInhibit)
-        #~ self.circle_inhibit_proxy.wait_for_service()
+        self.circle_inhibit_proxy.wait_for_service()
         
-        #~ self.polygon_proxy('Recycling', True, RECYCLING)
-        #~ self.polygon_proxy('Garbage', True, TRASH)
+        rospy.loginfo("Drawing trash/recycling")
+        self.polygon_proxy('Recycling', True, RECYCLING)
+        self.polygon_proxy('Garbage', True, TRASH)
         
     
     def click(self, msg):
