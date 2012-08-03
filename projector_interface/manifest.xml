@@ -20,6 +20,9 @@
   <depend package="image_geometry"/>
   <depend package="pr2_python"/>
   <depend package="tabletop_object_detector"/>
+  <rosdep name="python-scipy"/>
+  <rosdep name="pyside"/>
+  <rosdep name="pil"/>
 </package>
 
 
