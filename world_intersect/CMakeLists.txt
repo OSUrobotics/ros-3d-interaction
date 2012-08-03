@@ -36,7 +36,7 @@ include_directories(${EIGEN_INCLUDE_DIRS})
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(world_intersect src/world_intersect.cpp)
+#rosbuild_add_executable(world_intersect src/world_intersect.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
 # target_link_libraries (${PROJECT_NAME} ${PCL_LIBRARIES})
