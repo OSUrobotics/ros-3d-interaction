@@ -1,4 +1,4 @@
 pyside:
-	ubuntu: python-pyside.qtcore python-pyside.qtgui libpyside-dev
+    ubuntu: python-pyside.qtcore python-pyside.qtgui libpyside-dev
 pil:
-	ubuntu: python-imaging
+    ubuntu: python-imaging
