@@ -1,0 +1,46 @@
+<launch>
+	<arg name="filter_pose" default="false"/>
+
+  <include file="$(find pr2_machine)/pr2.machine" />
+
+  <include file="$(find pr2_tabletop_manipulation_launch)/launch/pr2_tabletop_manipulation.launch">
+    <arg name="stereo" value="false"/>
+    <arg name="kinect_frame_prefix" value="camera"/>
+    <arg name="flatten_table" value="true"/>
+  </include>
+
+  <include file="$(find openni_launch)/launch/kinect_frames.launch">
+    <arg name="camera" value="camera" />
+  </include>
+
+  <!--include file="$(find head_pose_estimation)/launch/estimator.launch">
+    <arg name="camera" value="external_camera"/>
+  </include-->
+
+  <!--node pkg="reconfigurable_transform_publisher" type="reconfigurable_transform_publisher.py" name="external_kinect_frame" args="0.4 0.55 0.9 5.69 6.1 0 base_link external_camera_link 100"/>-->
+  <node pkg="reconfigurable_transform_publisher" type="reconfigurable_transform_publisher.py" name="external_kinect_frame" args="0.28 0.23 0.9 -0.0217840654891 -0.143567412781 -0.0515759075903 0.988055554225 base_link external_camera_link 100"/>
+
+	<node pkg="projector_interface" name="find_objects" type="find_objects.py"/>
+	
+	<!--include file="$(find world_intersect)/launch/intersect_pose.launch">
+		<arg unless="$(arg filter_pose)" name="head_pose" value="head_pose"/>
+		<arg     if="$(arg filter_pose)" name="head_pose" value="head_pose_filtered"/>
+		<arg name="cloud_to_intersect" value="octomap_point_cloud"/> 
+	</include-->
+  <node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
+    <remap from="pose" to="head_pose"/>
+  </node>
+
+	<!--include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
+		<arg name="calibration_camera" value="/wide_stereo/right"/>
+	</include!-->
+
+  <node name="manipulation" type="object_manipulation.py" pkg="projector_interface">
+  </node>
+	<node name="click" type="click.py" pkg="projector_interface">
+    <remap from="joy" to="wiijoy"/>
+  </node>
+  <!--include file="$(find pr2_teleop)/teleop_joystick.launch"/-->
+	<!--node name="wiimote" type="wiimote_node.py" pkg="wiimote"/-->
+	
+</launch>
