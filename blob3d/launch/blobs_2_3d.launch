@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find blob3d)/launch/cmvision.launch"/>
+    <node name="blob_2_3d" type="blobs_2_3d.py" pkg="blob3d">
+	<remap from="cloud" to="/camera/depth_registered/points"/>
+    </node>
+</launch>

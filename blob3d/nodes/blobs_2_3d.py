@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import roslib; roslib.load_manifest('blob3d')
 import rospy
 from cmvision.msg import Blobs

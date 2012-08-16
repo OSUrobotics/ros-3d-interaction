@@ -1,0 +1,3 @@
+std_msgs/ColorRGBA blob_color
+---
+std_msgs/Bool success
