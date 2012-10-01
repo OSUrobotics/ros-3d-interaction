@@ -3,17 +3,20 @@ from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 import numpy as np
 class CalibrationGrid(QtGui.QWidget):
-	_width = 700
+	_width  = 700
 	_height = 500
 	padding = 100
+	origin  = None
 	corners = []
 	
 	key_handlers = dict()
 	
-	def __init__(self, nRows=5, nCols=5):
+	def __init__(self, nRows=5, nCols=5, origin=None, scale=1):
 		super(CalibrationGrid, self).__init__()
 		self.nRows = nRows
 		self.nCols = nCols
+		self.origin = origin
+		self.scale  = scale
 		self.initUI()
 		
 	@property
@@ -59,17 +62,23 @@ class CalibrationGrid(QtGui.QWidget):
 		else:
 			square = self.width/self.nCols - 2*self.padding/self.nCols
 			
+		square *= self.scale
+			
 		grid_size_rows = square * self.nRows + 2 * self.padding
 		grid_size_cols = square * self.nCols + 2 * self.padding
 		
 		row_offset = (self.height - grid_size_rows) / 2
 		col_offset = (self.width  - grid_size_cols) / 2
 		
+		top0, left0 = (self.padding + row_offset, self.padding + col_offset)
+		if self.origin is not None:
+			top0, left0 = self.origin[1], self.origin[0]
+        
 		del self.corners[:]
 		for row in range(self.nRows):
-			top = row*square + self.padding + row_offset
+			top = row*square + top0
 			for col in range(self.nCols):			
-				left = col*square + self.padding + col_offset
+				left = col*square + left0
 				if (col < self.nCols - 1) and (row < self.nRows - 1):
 					self.corners.append((top+square, left+square))
 				color = QtGui.QColor(*(cref*black))
