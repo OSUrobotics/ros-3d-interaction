@@ -19,6 +19,37 @@ calib_im = None
 
 class Calibrator(object):
 	image = None
+	fail_count = 0
+	grid_corners = np.zeros((0,2))
+	img_corners  = np.zeros((0,2))
+	
+	def detect(self):
+		im1 = bridge.imgmsg_to_cv(self.image)
+		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
+		corners2 = np.array(self.grid.corners, dtype=np.float32)
+
+		if np.asarray(corners1[1]).shape == corners2.shape:
+			self.img_corners  = np.vstack((self.img_corners,  np.float32(corners1[1])))
+			self.grid_corners = np.vstack((self.grid_corners, corners2))
+			return True
+		return False
+	
+	def find_homography(self):
+		if len(self.img_corners) == len(self.grid_corners):
+			from pprint import pprint
+			H, mask = cv2.findHomography(self.img_corners, self.grid_corners, method=cv2.RANSAC)
+			pprint(H)
+			rospy.set_param('/homography', H.flatten().tolist())
+	        # self.homography_pub.publish(H.flatten())
+
+	        # c1 = np.array([corners1[1]])
+	        # c2 = np.array([corners2])
+	        # err = cv2.perspectiveTransform(c1,H) - c2
+			# sys.exit(0)
+			return True
+		return False
+		
+	
 	def publish_image(self, grid_pub):
 		im = self.grid.getPatternAsImage(im_type='OPENCV')
 
@@ -35,37 +66,44 @@ class Calibrator(object):
 		cv.Merge(r,g,b,None,imrgb)
 		return imrgb
 
-	def calibrate(self, *args):
-		# TODO wait until we can detect a checkerboard
+	def calibrate(self, keep_going=False, retry=True):
 		print 'waiting...'
 		while not self.image and not rospy.is_shutdown():
 			rospy.sleep(0.1)
 		print 'ready'
-		im1 = bridge.imgmsg_to_cv(self.image)
-		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
-		corners2 = np.array(self.grid.corners, dtype=np.float32)
-
-		if np.asarray(corners1[1]).shape == corners2.shape:
-			from pprint import pprint
-			H, mask = cv2.findHomography(np.float32(corners1[1]), corners2, method=cv2.RANSAC)
-			pprint(H)
-			rospy.set_param('/homography', H.flatten().tolist())
-            # self.homography_pub.publish(H.flatten())
-
-            # c1 = np.array([corners1[1]])
-            # c2 = np.array([corners2])
-            # err = cv2.perspectiveTransform(c1,H) - c2
-		else:
+		if self.detect():
+			if not keep_going:
+				sys.exit(self.find_homography())
+		if retry or keep_going:
 			if rospy.is_shutdown(): return
 			rospy.logwarn('Wrong number of corners. Is there something obstructing the calibration grid?')
+			self.fail_count += 1
+			if self.fail_count > 3:
+				self.grid.scale = 0.5
+				
+				if len(self.origins) > 0:
+					if self.fail_count % 4:
+						self.grid.origin = self.origins.pop()
+						self.grid.repaint()
+						self.grid.repaint()
+						self.grid.repaint()
+						self.grid.repaint()
+						rospy.sleep(2)
+					self.calibrate(keep_going=(len(self.origins)>0), retry=False)
+				else:
+					self.grid.origin = None
+					self.grid.scale = 1.0
+					self.grid.repaint()				
 			self.calibrate()
-		sys.exit(0)
+		sys.exit(self.find_homography())
 		
 	def image_cb(self, msg):
 		self.image = msg
 
 	def maybe_shutdown(self):
-		if rospy.is_shutdown(): sys.exit(0)
+		if rospy.is_shutdown():
+			print 'ROSPY IS SHUTDOWN'
+			sys.exit(0)
 	
 	def __init__(self):
 		rospy.init_node('grid')
@@ -81,12 +119,19 @@ class Calibrator(object):
 		qtimer = PySide.QtCore.QTimer(self.grid)
 		qtimer.timeout.connect(self.maybe_shutdown)
 		qtimer.start()
+		self.origins = [
+			(self.grid.width(),self.grid.padding),
+			(self.grid.width(),self.grid.height()-self.grid.padding),
+			(self.grid.padding,self.grid.height()-self.grid.padding),
+			(self.grid.padding,self.grid.padding)
+		]
+		
 		PySide.QtCore.QTimer.singleShot(1000, self.calibrate)
-		#self.grid.setCursor(PySide.QtGui.QCursor(PySide.QtCore.Qt.BlankCursor))
-		#timer = PySide.QtCore.QTimer(self.grid)
-		#self.grid.connect(timer, PySide.QtCore.SIGNAL('timeout()'), partial(self.publish_image, grid_pub))
-		#timer.start(100)
-		sys.exit(app.exec_())
+		timer = PySide.QtCore.QTimer(self.grid)
+		timer.timeout.connect(self.grid.update)
+		timer.start(100)
+		print 'Exit code is ', app.exec_()
+		# sys.exit(app.exec_())
 
 if __name__ == '__main__':
 	Calibrator()

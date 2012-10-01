@@ -19,13 +19,13 @@ class CalibrationGrid(QtGui.QWidget):
 		self.scale  = scale
 		self.initUI()
 		
-	@property
-	def width(self):
-		return self.size().width()
-
-	@property
-	def height(self):
-		return self.size().height()
+	# @property
+	# def width(self):
+	# 	return self.size().width()
+	# 
+	# @property
+	# def height(self):
+	# 	return self.size().height()
 		
 	def escHandler(self, e):
 		sys.exit(0)
@@ -57,18 +57,18 @@ class CalibrationGrid(QtGui.QWidget):
 		black = False
 		cref = np.array((255,255,255))
 		square = None
-		if self.height < self.width:
-			square = self.height/self.nRows - 2*self.padding/self.nRows
+		if self.height() < self.width():
+			square = self.height()/self.nRows - 2*self.padding/self.nRows
 		else:
-			square = self.width/self.nCols - 2*self.padding/self.nCols
+			square = self.width()/self.nCols - 2*self.padding/self.nCols
 			
 		square *= self.scale
 			
 		grid_size_rows = square * self.nRows + 2 * self.padding
 		grid_size_cols = square * self.nCols + 2 * self.padding
 		
-		row_offset = (self.height - grid_size_rows) / 2
-		col_offset = (self.width  - grid_size_cols) / 2
+		row_offset = (self.height() - grid_size_rows) / 2
+		col_offset = (self.width()  - grid_size_cols) / 2
 		
 		top0, left0 = (self.padding + row_offset, self.padding + col_offset)
 		if self.origin is not None:
@@ -93,10 +93,10 @@ class CalibrationGrid(QtGui.QWidget):
 		qimage = pixmap.toImage()
 		if im_type == 'PIL':
 			import Image
-			pil_im = Image.frombuffer('RGBA', (self.width, self.height), qimage.bits(), 'raw', 'RGBA', 0, 1).convert('L')
+			pil_im = Image.frombuffer('RGBA', (self.width(), self.height()), qimage.bits(), 'raw', 'RGBA', 0, 1).convert('L')
 			return pil_im
 		elif im_type == 'OPENCV':
 			import cv
-			cv_im = cv.CreateImageHeader((self.width, self.height), cv.IPL_DEPTH_8U, 4)
+			cv_im = cv.CreateImageHeader((self.width(), self.height()), cv.IPL_DEPTH_8U, 4)
 			cv.SetData(cv_im, qimage.bits())
 			return cv_im
