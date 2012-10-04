@@ -73,12 +73,26 @@ class Circler(QtGui.QWidget):
     
     hilights = []
     polygons = dict()
+
+    key_handlers = dict()
+
+    # TODO: DEBUG REMOVE ME!
+    projected_cursor = (100,100)
     
+    def keyPressEvent(self, e):
+        for key, fn in self.key_handlers.items():
+            if key == e.key():
+                fn(e)
+        
+    def addKeyHandler(self, key, fn):
+        self.key_handlers[key] = fn
+
+
     def escHandler(self, e):
         sys.exit(0)
 
     def initUI(self):
-        #self.addKeyHandler(16777216, self.escHandler)
+        self.addKeyHandler(16777216, self.escHandler)
         p = QPalette()
         p.setColor(QPalette.Background, QtGui.QColor(0,0,0))
         self.setPalette(p)
@@ -141,11 +155,14 @@ class Circler(QtGui.QWidget):
                 pt.point.x, pt.point.y, pt.point.z = point.tolist()
             except Exception:
                 print 'Error: ', point
-            stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
-            pt.header = point_header
-            pt.header.stamp = stamp
             # first, transform the point into the camera frame
-            pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+            if point_header.frame_id != self.model.tf_frame:
+                stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
+                pt.header = point_header
+                pt.header.stamp = stamp
+                pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+            else:
+                pt_out = pt.point
             # project it onto the image plane
             px = self.model.project3dToPixel((pt_out.x, pt_out.y, pt_out.z))
             pts_out.append(px)
@@ -315,9 +332,10 @@ class Circler(QtGui.QWidget):
                 points = cv2.perspectiveTransform(points, self.H)
                 
                 color = Colors.WHITE
-                if pnpoly(xformed[0], xformed[1], points[0]):
-                    color = Colors.GREEN
-                    self.selected_pt = np.array(pts_arr.squeeze().mean(0))
+                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                    if pnpoly(xformed[0], xformed[1], points[0]):
+                        color = Colors.GREEN
+                        self.selected_pt = np.array(pts_arr.squeeze().mean(0))
                     
                 # print self.selected_pt
                 selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
