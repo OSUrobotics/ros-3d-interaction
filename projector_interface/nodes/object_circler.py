@@ -194,6 +194,11 @@ class Circler(QtGui.QWidget):
     def sameObject(self, p1, p2):
         return self.dist(p1,p2) < SAME_OBJ_THRESH
     
+    def maybe_flip(self, coords):
+        if self.flip:
+            return self.SCREEN_WIDTH - coords[0], self.SCREEN_HEIGHT - coords[1]
+        return coords 
+
     def paintEvent(self, e):
         if rospy.is_shutdown(): sys.exit()
         # circle the objects
@@ -220,9 +225,10 @@ class Circler(QtGui.QWidget):
                         inner_pen.setWidth(6)
                         inner_pen.setColor(self.getHilightColor(pt))
                         qp.setPen(inner_pen)
+                        coords = self.maybe_flip(xformed[1], xformed[0])
                         inner_rect = QtCore.QRectF(
-                                        self.SCREEN_WIDTH  - xformed[1]-r/2 + X_OFFSET + 5,
-                                        self.SCREEN_HEIGHT - xformed[0]-r/2 + Y_OFFSET + 5,
+                                        self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET + 5,
+                                        self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET + 5,
                                         r-10,
                                         r-10
                         )
@@ -243,9 +249,10 @@ class Circler(QtGui.QWidget):
                     pen = qp.pen()
                     pen.setWidth(5)
                     qp.setPen(pen)
+                    coords = self.maybe_flip(xformed[1], xformed[0])
                     rect = QtCore.QRectF(
-                        self.SCREEN_WIDTH  - xformed[1]-r/2 + X_OFFSET,
-                        self.SCREEN_HEIGHT - xformed[0]-r/2 + Y_OFFSET,
+                        self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET,
+                        self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET,
                         r,
                         r
                     )
@@ -257,9 +264,9 @@ class Circler(QtGui.QWidget):
             with self.object_lock:
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     xformed = np.median(self.projected_cursor, 0)
-                    
-                    cursor_x = self.SCREEN_WIDTH  - xformed[1]
-                    cursor_y = self.SCREEN_HEIGHT - xformed[0]
+                    coords = self.maybe_flip(xformed[1], xformed[0])
+                    cursor_x = self.SCREEN_WIDTH  - coords[0]
+                    cursor_y = self.SCREEN_HEIGHT - coords[1]
                     
                     qp = QtGui.QPainter()
                     qp.begin(self)
@@ -333,7 +340,7 @@ class Circler(QtGui.QWidget):
                 
                 color = Colors.WHITE
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    if pnpoly(xformed[0], xformed[1], points[0]):
+                    if pnpoly(coords[0], xformed[1], points[0]):
                         color = Colors.GREEN
                         self.selected_pt = np.array(pts_arr.squeeze().mean(0))
                     
@@ -349,7 +356,8 @@ class Circler(QtGui.QWidget):
                 pen.setWidth(5)
                 qp.setPen(pen)
                 
-                points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0]) + [Y_OFFSET, X_OFFSET]
+                if self.flip:
+                    points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0]) + [Y_OFFSET, X_OFFSET]
                 
                 for point in points[0]:
                     poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
@@ -407,6 +415,7 @@ class Circler(QtGui.QWidget):
         while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
             r.sleep()
         self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
+        self.flip = rospy.get_param('~/flip', default=False)
         rospy.loginfo('got homography')
         print self.H
         self.initUI()
