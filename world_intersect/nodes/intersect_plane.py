@@ -27,9 +27,12 @@ def cast_ray(pose, table, tfl):
     m = q + [0,0,1]
     
     try:
-        pose.header.stamp = tfl.getLatestCommonTime(table.pose.header.frame_id, pose.header.frame_id)
+        # pose.header.stamp = tfl.getLatestCommonTime(table.pose.header.frame_id, pose.header.frame_id)
+        pose.header.stamp = rospy.Time(0)
         pose_transformed = tfl.transformPose(table.pose.header.frame_id, pose)
-    except:
+    except tf.Exception, e:
+        print 'trouble with tf lookup'
+        print e.message
         return False
        
     # origin vector
