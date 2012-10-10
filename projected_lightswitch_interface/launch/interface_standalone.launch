@@ -2,29 +2,9 @@
 	<arg name="wall_cam_name" default="wall_cam"/>
 	<arg name="face_cam_name" default="face_cam"/>
 
-	<!-- Kinect camera frames -->
-	<node
-		name="tripod_to_face_cam_frame"
-		pkg="reconfigurable_transform_publisher"
-		type="reconfigurable_transform_publisher.py"
-		args="0.1 -0.05 0 0 0 0 tripod_link $(arg face_cam_name)_link 10"
-	/>
-	<node
-		name="tripod_to_wall_cam_frame"
-		pkg="reconfigurable_transform_publisher"
-		type="reconfigurable_transform_publisher.py"
-		args="0 0.1 0.05 -2.9531 0 0 tripod_link $(arg wall_cam_name)_link 10"
-	/>
-
-	<!-- Kinect cameras -->
-	<include file="$(find openni_launch)/launch/openni.launch">
-		<arg name="camera" value="$(arg face_cam_name)"/>
-		<arg name="device_id" value="A00367915166050A"/>
-	</include>
-
-	<include file="$(find openni_launch)/launch/openni.launch">
-		<arg name="camera" value="$(arg wall_cam_name)"/>
-		<arg name="device_id" value="A00362A15947039A"/> 
+	<include file="$(find projected_lightswitch_interface)/launch/prerequisites.launch">
+		<arg name="wall_cam_name" value="wall_cam"/>
+		<arg name="face_cam_name" value="face_cam"/>
 	</include>
 
 	<!-- Head pose estimation -->
@@ -43,4 +23,11 @@
 	<include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
 	 	<arg name="calibration_camera" value="/$(arg wall_cam_name)/rgb"/>
 	</include>
+	
+	<node name="rviz_click" pkg="projected_lightswitch_interface" type="click_to_if.py"/>
+	
+	<node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
+    	<remap from="pose" to="head_pose"/>
+  	</node>
+
 </launch>

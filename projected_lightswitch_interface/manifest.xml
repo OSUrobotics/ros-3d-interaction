@@ -9,6 +9,8 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/projected_lightswitch_interface</url>
   <depend package="projector_interface"/>
+  <depend package="tf"/>
+  <depend package="pr2_object_manipulation_msgs"/>
 
 </package>
 
