@@ -24,7 +24,11 @@ class Calibrator(object):
 	img_corners  = np.zeros((0,2))
 	
 	def detect(self):
-		im1 = bridge.imgmsg_to_cv(self.image)
+		try:
+			im1 = bridge.imgmsg_to_cv(self.image)
+		except AttributeError, e:
+			rospy.logwarn("Tried to convert a None image")
+			return False
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
 		corners2 = np.array(self.grid.corners, dtype=np.float32)
 
@@ -93,16 +97,16 @@ class Calibrator(object):
 				else:
 					self.grid.origin = None
 					self.grid.scale = 1.0
-					self.grid.repaint()				
+					self.grid.repaint()
 			self.calibrate()
-		sys.exit(self.find_homography())
+		# sys.exit(self.find_homography())
+		self.find_homography()
 		
 	def image_cb(self, msg):
 		self.image = msg
 
 	def maybe_shutdown(self):
 		if rospy.is_shutdown():
-			print 'ROSPY IS SHUTDOWN'
 			sys.exit(0)
 	
 	def __init__(self):
@@ -130,8 +134,7 @@ class Calibrator(object):
 		timer = PySide.QtCore.QTimer(self.grid)
 		timer.timeout.connect(self.grid.update)
 		timer.start(100)
-		print 'Exit code is ', app.exec_()
-		# sys.exit(app.exec_())
+		sys.exit(app.exec_())
 
 if __name__ == '__main__':
 	Calibrator()
