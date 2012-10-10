@@ -76,9 +76,6 @@ class Circler(QtGui.QWidget):
 
     key_handlers = dict()
 
-    # TODO: DEBUG REMOVE ME!
-    projected_cursor = (100,100)
-    
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
             if key == e.key():
@@ -157,7 +154,8 @@ class Circler(QtGui.QWidget):
                 print 'Error: ', point
             # first, transform the point into the camera frame
             if point_header.frame_id != self.model.tf_frame:
-                stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
+                # stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
+                stamp = rospy.Time(0)
                 pt.header = point_header
                 pt.header.stamp = stamp
                 pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
@@ -207,6 +205,8 @@ class Circler(QtGui.QWidget):
         self.SCREEN_HEIGHT = self.height()
         self.SCREEN_WIDTH  = self.width()
         
+        cursor_coords = None
+
         with self.object_lock:
             if self.objects is not None and self.projected_objects is not None:
                 # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
@@ -225,7 +225,7 @@ class Circler(QtGui.QWidget):
                         inner_pen.setWidth(6)
                         inner_pen.setColor(self.getHilightColor(pt))
                         qp.setPen(inner_pen)
-                        coords = self.maybe_flip(xformed[1], xformed[0])
+                        coords = self.maybe_flip((xformed[1], xformed[0]))
                         inner_rect = QtCore.QRectF(
                                         self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET + 5,
                                         self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET + 5,
@@ -249,7 +249,7 @@ class Circler(QtGui.QWidget):
                     pen = qp.pen()
                     pen.setWidth(5)
                     qp.setPen(pen)
-                    coords = self.maybe_flip(xformed[1], xformed[0])
+                    coords = self.maybe_flip((xformed[1], xformed[0]))
                     rect = QtCore.QRectF(
                         self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET,
                         self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET,
@@ -264,9 +264,9 @@ class Circler(QtGui.QWidget):
             with self.object_lock:
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     xformed = np.median(self.projected_cursor, 0)
-                    coords = self.maybe_flip(xformed[1], xformed[0])
-                    cursor_x = self.SCREEN_WIDTH  - coords[0]
-                    cursor_y = self.SCREEN_HEIGHT - coords[1]
+                    coords = self.maybe_flip((xformed[1], xformed[0]))
+                    cursor_x = coords[0]
+                    cursor_y = coords[1]
                     
                     qp = QtGui.QPainter()
                     qp.begin(self)
@@ -338,9 +338,14 @@ class Circler(QtGui.QWidget):
                 points = self.projectPoints(pts_arr, polygon.header)
                 points = cv2.perspectiveTransform(points, self.H)
                 
+                if self.flip:
+                    points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
+
+                # points += [Y_OFFSET, X_OFFSET]
+
                 color = Colors.WHITE
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    if pnpoly(coords[0], xformed[1], points[0]):
+                    if pnpoly(cursor_y, cursor_x, points[0]):
                         color = Colors.GREEN
                         self.selected_pt = np.array(pts_arr.squeeze().mean(0))
                     
@@ -355,10 +360,8 @@ class Circler(QtGui.QWidget):
                 pen = qp.pen()
                 pen.setWidth(5)
                 qp.setPen(pen)
-                
-                if self.flip:
-                    points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0]) + [Y_OFFSET, X_OFFSET]
-                
+                                
+                # rospy.loginfo("Points\n%s" % str(points))
                 for point in points[0]:
                     poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
             
@@ -366,6 +369,7 @@ class Circler(QtGui.QWidget):
                 origin = points[0].min(0)
                 size = points[0].max(0) - origin
                 textRect = QtCore.QRectF(origin[1],origin[0],size[1],size[0])
+                qp.setFont(QtGui.QFont('Decorative', 24))
                 qp.drawText(textRect, QtCore.Qt.AlignCenter, name)
             
         # reset once the click has expired
@@ -433,7 +437,7 @@ class Circler(QtGui.QWidget):
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
                 
         timer = PySide.QtCore.QTimer(self)
-        timer.setInterval(50)
+        timer.setInterval(60)
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
