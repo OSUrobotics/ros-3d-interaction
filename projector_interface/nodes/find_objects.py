@@ -44,11 +44,14 @@ def detect(detect_srv):
     objects = detection.clusters
     header = rospy.Header()
     header.stamp = rospy.Time.now()
+    cloud = None
+    table = None
     if objects:
         frame_id = objects[0].header.frame_id
         cloud = xyz_array_to_pointcloud2(np.asarray([location_from_cluster(obj) for obj in objects]), stamp=rospy.Time.now(), frame_id='/table')
-        return cloud, detection.table
-    return None, None
+    if detection.table.pose.header.frame_id:
+        table = detection.table
+    return cloud, table
 
 def broadcast_table_frame(args):
     if table_pose is None: return
@@ -84,6 +87,7 @@ if __name__ == '__main__':
     rospy.init_node('find_objects')
     object_pub = rospy.Publisher('object_cloud', PointCloud2)
     table_pub  = rospy.Publisher('table', Table)
+    rate = rospy.get_param('~detect_rate', default=0.5)
     br = TransformBroadcaster()	
     detect_srv = rospy.ServiceProxy('/tabletop_segmentation', TabletopSegmentation)
     detect_srv.wait_for_service()
@@ -93,12 +97,16 @@ if __name__ == '__main__':
     #    y = dynamic_reconfigure.client.Client('yfilter', timeout=float('inf')),
     #    z = dynamic_reconfigure.client.Client('zfilter', timeout=float('inf'))
     #)
+    r = rospy.Rate(rate)
     while not rospy.is_shutdown():
         object_cloud, table = detect(detect_srv)
-        if object_cloud is not None:
+        if table is not None:
             with tf_lock:
                 if not table_pose or np.linalg.norm(pt2np(table_pose.pose.position) - pt2np(table.pose.pose.position)) > 0.1:
                     table_pose = table.pose
+            table_pub.publish(table)
+
+        if object_cloud is not None:
             #set_table_filter_limits(table, clients)
             object_pub.publish(object_cloud)
-            table_pub.publish(table)
+        r.sleep()
