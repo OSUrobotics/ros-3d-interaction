@@ -4,7 +4,7 @@ from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
-from std_msgs.msg import Empty
+from std_msgs.msg import Empty, String as String
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
@@ -332,7 +332,7 @@ class Circler(QtGui.QWidget):
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
-            for name, polygon in self.polygons.iteritems():
+            for name, (polygon, color) in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
                 points = self.projectPoints(pts_arr, polygon.header)
@@ -343,7 +343,8 @@ class Circler(QtGui.QWidget):
 
                 # points += [Y_OFFSET, X_OFFSET]
 
-                color = Colors.WHITE
+                # color = Colors.WHITE
+
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     if pnpoly(cursor_y, cursor_x, points[0]):
                         color = Colors.GREEN
@@ -355,6 +356,7 @@ class Circler(QtGui.QWidget):
                 # print selected_pt_xformed
                 if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
                     color = Colors.BLUE
+                    self.clicked_object_pub.publish(name)
             
                 qp.setPen(color)
                 pen = qp.pen()
@@ -408,7 +410,7 @@ class Circler(QtGui.QWidget):
         return projector_interface.srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
-        self.polygons[req.name] = req.polygon
+        self.polygons[req.name] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b))
         return projector_interface.srv.DrawPolygonResponse()
 
     def __init__(self):
@@ -435,7 +437,8 @@ class Circler(QtGui.QWidget):
         rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
-                
+        self.clicked_object_pub = rospy.Publisher('clicked_object', String)
+
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(60)
         timer.timeout.connect(self.update)
