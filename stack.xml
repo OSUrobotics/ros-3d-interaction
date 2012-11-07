@@ -3,7 +3,6 @@
   <author>Maintained by Daniel Lazewatsky</author>
   <license>BSD</license>  
   <url>http://ros.org/wiki/3d_interaction</url>
-  <depend stack="accessible_interfaces" /> <!-- brain_stuff -->
   <depend stack="common_msgs" /> <!-- geometry_msgs, sensor_msgs -->
   <depend stack="geometry" /> <!-- tf, tf_conversions -->
   <depend stack="laser_pipeline" /> <!-- laser_assembler -->
