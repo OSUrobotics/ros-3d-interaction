@@ -49,7 +49,7 @@ class Calibrator(object):
 	        # c1 = np.array([corners1[1]])
 	        # c2 = np.array([corners2])
 	        # err = cv2.perspectiveTransform(c1,H) - c2
-			# sys.exit(0)
+			sys.exit(0)
 			return True
 		return False
 		
