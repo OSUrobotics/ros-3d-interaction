@@ -1,10 +1,15 @@
 <launch>
-	<arg name="wall_cam_name" default="wall_cam"/>
+	<arg name="use_robot" default="false"/>
+	<arg name="wall_cam_name" default="wall_cam"          unless="$(arg use_robot)"/>
+	<arg name="wall_cam_name" default="head_mount_kinect" if="$(arg use_robot)"/>
 	<arg name="face_cam_name" default="face_cam"/>
 
+	<!-- <param name="/publish_click_camera_display/render_blacklist" value="[]"/> -->
+
 	<include file="$(find projected_lightswitch_interface)/launch/prerequisites.launch">
-		<arg name="wall_cam_name" value="wall_cam"/>
-		<arg name="face_cam_name" value="face_cam"/>
+		<arg name="wall_cam_name" value="$(arg wall_cam_name)"/>
+		<arg name="face_cam_name" value="$(arg face_cam_name)"/>
+		<arg name="use_robot" value="$(arg use_robot)"/>
 	</include>
 
 	<!-- Head pose estimation -->
@@ -14,7 +19,7 @@
 	</include>
 
 	<!-- Table/wall detection + Object segmentation -->
-	<include file="$(find projector_interface)/launch/tabletop_segmentation_overhead_kinect.launch">
+	<include file="$(find projector_interface)/launch/tabletop_segmentation_overhead_kinect.launch" unless="$(arg use_robot)">
 		<arg name="tabletop_segmentation_points_in" value="/$(arg wall_cam_name)/depth_registered/points"/>
 	</include>
 	<node pkg="projector_interface" name="find_objects" type="find_objects.py"/>
@@ -28,6 +33,7 @@
 	
 	<node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
     	<remap from="pose" to="head_pose"/>
+    	<param name="plane_frame" value="4x4_0"/>
   	</node>
 
 </launch>
