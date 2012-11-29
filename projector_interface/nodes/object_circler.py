@@ -60,8 +60,6 @@ class Circler(QtGui.QWidget):
     use_selected_thresh = True
     
     cursor_pts = None
-    projected_cursor = deque([], rospy.get_param('~/window_size', 10))
-    cursor_pts_xyz = deque([], rospy.get_param('~/window_size', 10))
     
     model = None
     object_header = None
@@ -421,7 +419,15 @@ class Circler(QtGui.QWidget):
         while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
             r.sleep()
         self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
-        self.flip = rospy.get_param('~/flip', default=False)
+        self.flip = rospy.get_param('~flip', default=False)
+
+        self.projected_cursor = deque([], rospy.get_param('~window_size', 10))
+        self.cursor_pts_xyz = deque([], rospy.get_param('~window_size', 10))
+
+
+        rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
+        rospy.loginfo('Flip        = %s', self.flip)
+
         rospy.loginfo('got homography')
         print self.H
         self.initUI()
