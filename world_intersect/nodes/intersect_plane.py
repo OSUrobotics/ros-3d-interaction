@@ -11,16 +11,16 @@ from math import sin, cos, pi
 import tf
 from pr2_python.pointclouds import xyz_array_to_pointcloud2
 
-def cast_ray(pose, table, tfl):
+def cast_ray(pose, plane, tfl):
     # assume the plane passes through table.pose
     # and the vector table.pose.x,table.pose.y,table.pose.z+1 is a
     # normal for the table in its frame
     
     # point
     q = np.array([
-        table.pose.pose.position.x,
-        table.pose.pose.position.y,
-        table.pose.pose.position.z
+        plane.pose.position.x,
+        plane.pose.position.y,
+        plane.pose.position.z
     ])
     
     # normal
@@ -29,7 +29,7 @@ def cast_ray(pose, table, tfl):
     try:
         # pose.header.stamp = tfl.getLatestCommonTime(table.pose.header.frame_id, pose.header.frame_id)
         pose.header.stamp = rospy.Time(0)
-        pose_transformed = tfl.transformPose(table.pose.header.frame_id, pose)
+        pose_transformed = tfl.transformPose(plane.header.frame_id, pose)
     except tf.Exception, e:
         print 'trouble with tf lookup'
         print e.message
@@ -56,45 +56,51 @@ def cast_ray(pose, table, tfl):
     t = np.dot(q-p,m) / np.dot(d,m)
     if t < 0: # some normal must be flipped since t is normally > 0
         v = PointStamped()
-        v.header = table.pose.header
+        v.header = plane.header
         v.point.x, v.point.y, v.point.z = p + t*d
         return v
     return False
     
 class Intersector(object):
-    def __init__(self):
-        self.pose    = None
-        self.table   = None
-        self.rate    = rospy.Rate(20)
-        self.tfl     = tf.TransformListener()
-        self.int_pub = rospy.Publisher('intersected_points', PointCloud2)
-    
+    def __init__(self, plane_frame):
+        self.plane_frame = plane_frame
+        self.pose        = None
+        self.table_pose  = PoseStamped()
+        self.rate        = rospy.Rate(20)
+        self.tfl         = tf.TransformListener()
+        self.int_pub     = rospy.Publisher('intersected_points', PointCloud2)
+
+        self.table_pose.pose.orientation.w = 1.0
+        self.table_pose.header.frame_id = plane_frame
+
     def pose_cb(self, pose):
         self.pose = pose
         
-    def table_cb(self, table):
-        self.table = table
+    # def table_cb(self, table):
+    #     self.table = table
         
     def run(self):
         while not rospy.is_shutdown():
-            if not self.pose or not self.table: continue
-            intersection = cast_ray(self.pose, self.table, self.tfl)
+            if not self.pose: continue
+            intersection = cast_ray(self.pose, self.table_pose, self.tfl)
             if intersection:
                 cloud = xyz_array_to_pointcloud2(np.array([[
                     intersection.point.x,
                     intersection.point.y,
                     intersection.point.z
                 ]]))
-                cloud.header = self.table.pose.header
+                cloud.header.frame_id = self.plane_frame
                 cloud.header.stamp = self.pose.header.stamp
                 self.int_pub.publish(cloud)
                 self.rate.sleep()
     
 if __name__ == '__main__':
     rospy.init_node('intersect_plane')
-    intersector = Intersector()
+    plane_frame = rospy.get_param('~plane_frame')
+    print 'Plane frame = %s' % plane_frame
+    intersector = Intersector(plane_frame)
     pose_sub  = rospy.Subscriber('pose',  PoseStamped, intersector.pose_cb)
-    table_sub = rospy.Subscriber('table', Table,       intersector.table_cb)
+    # table_sub = rospy.Subscriber('table', Table,       intersector.table_cb)
     intersector.run()
 
 def test():
