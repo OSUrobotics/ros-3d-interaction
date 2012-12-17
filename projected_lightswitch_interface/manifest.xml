@@ -1,0 +1,18 @@
+<package>
+  <description brief="projected_lightswitch_interface">
+
+     projected_lightswitch_interface
+
+  </description>
+  <author>Dan Lazewatsky</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/projected_lightswitch_interface</url>
+  <depend package="projector_interface"/>
+  <depend package="tf"/>
+  <depend package="pr2_object_manipulation_msgs"/>
+  <depend package="rcommander_interface"/>
+
+</package>
+
+

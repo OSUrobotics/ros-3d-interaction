@@ -4,7 +4,7 @@ from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
-from std_msgs.msg import Empty
+from std_msgs.msg import Empty, String as String
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
@@ -60,8 +60,6 @@ class Circler(QtGui.QWidget):
     use_selected_thresh = True
     
     cursor_pts = None
-    projected_cursor = deque([], rospy.get_param('~/window_size', 10))
-    cursor_pts_xyz = deque([], rospy.get_param('~/window_size', 10))
     
     model = None
     object_header = None
@@ -73,12 +71,23 @@ class Circler(QtGui.QWidget):
     
     hilights = []
     polygons = dict()
-    
+
+    key_handlers = dict()
+
+    def keyPressEvent(self, e):
+        for key, fn in self.key_handlers.items():
+            if key == e.key():
+                fn(e)
+        
+    def addKeyHandler(self, key, fn):
+        self.key_handlers[key] = fn
+
+
     def escHandler(self, e):
         sys.exit(0)
 
     def initUI(self):
-        #self.addKeyHandler(16777216, self.escHandler)
+        self.addKeyHandler(16777216, self.escHandler)
         p = QPalette()
         p.setColor(QPalette.Background, QtGui.QColor(0,0,0))
         self.setPalette(p)
@@ -141,11 +150,15 @@ class Circler(QtGui.QWidget):
                 pt.point.x, pt.point.y, pt.point.z = point.tolist()
             except Exception:
                 print 'Error: ', point
-            stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
-            pt.header = point_header
-            pt.header.stamp = stamp
             # first, transform the point into the camera frame
-            pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+            if point_header.frame_id != self.model.tf_frame:
+                # stamp = self.tfl.getLatestCommonTime(self.model.tf_frame, point_header.frame_id)
+                stamp = rospy.Time(0)
+                pt.header = point_header
+                pt.header.stamp = stamp
+                pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+            else:
+                pt_out = pt.point
             # project it onto the image plane
             px = self.model.project3dToPixel((pt_out.x, pt_out.y, pt_out.z))
             pts_out.append(px)
@@ -177,6 +190,11 @@ class Circler(QtGui.QWidget):
     def sameObject(self, p1, p2):
         return self.dist(p1,p2) < SAME_OBJ_THRESH
     
+    def maybe_flip(self, coords):
+        if self.flip:
+            return self.SCREEN_WIDTH - coords[0], self.SCREEN_HEIGHT - coords[1]
+        return coords 
+
     def paintEvent(self, e):
         if rospy.is_shutdown(): sys.exit()
         # circle the objects
@@ -185,6 +203,8 @@ class Circler(QtGui.QWidget):
         self.SCREEN_HEIGHT = self.height()
         self.SCREEN_WIDTH  = self.width()
         
+        cursor_coords = None
+
         with self.object_lock:
             if self.objects is not None and self.projected_objects is not None:
                 # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
@@ -203,9 +223,10 @@ class Circler(QtGui.QWidget):
                         inner_pen.setWidth(6)
                         inner_pen.setColor(self.getHilightColor(pt))
                         qp.setPen(inner_pen)
+                        coords = self.maybe_flip((xformed[1], xformed[0]))
                         inner_rect = QtCore.QRectF(
-                                        self.SCREEN_WIDTH  - xformed[1]-r/2 + X_OFFSET + 5,
-                                        self.SCREEN_HEIGHT - xformed[0]-r/2 + Y_OFFSET + 5,
+                                        self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET + 5,
+                                        self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET + 5,
                                         r-10,
                                         r-10
                         )
@@ -226,9 +247,10 @@ class Circler(QtGui.QWidget):
                     pen = qp.pen()
                     pen.setWidth(5)
                     qp.setPen(pen)
+                    coords = self.maybe_flip((xformed[1], xformed[0]))
                     rect = QtCore.QRectF(
-                        self.SCREEN_WIDTH  - xformed[1]-r/2 + X_OFFSET,
-                        self.SCREEN_HEIGHT - xformed[0]-r/2 + Y_OFFSET,
+                        coords[0]-r/2 + X_OFFSET,
+                        coords[1]-r/2 + Y_OFFSET,
                         r,
                         r
                     )
@@ -240,9 +262,9 @@ class Circler(QtGui.QWidget):
             with self.object_lock:
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     xformed = np.median(self.projected_cursor, 0)
-                    
-                    cursor_x = self.SCREEN_WIDTH  - xformed[1]
-                    cursor_y = self.SCREEN_HEIGHT - xformed[0]
+                    coords = self.maybe_flip((xformed[1], xformed[0]))
+                    cursor_x = coords[0]
+                    cursor_y = coords[1]
                     
                     qp = QtGui.QPainter()
                     qp.begin(self)
@@ -308,16 +330,23 @@ class Circler(QtGui.QWidget):
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
-            for name, polygon in self.polygons.iteritems():
+            for name, (polygon, color) in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
                 points = self.projectPoints(pts_arr, polygon.header)
                 points = cv2.perspectiveTransform(points, self.H)
                 
-                color = Colors.WHITE
-                if pnpoly(xformed[0], xformed[1], points[0]):
-                    color = Colors.GREEN
-                    self.selected_pt = np.array(pts_arr.squeeze().mean(0))
+                if self.flip:
+                    points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
+
+                # points += [Y_OFFSET, X_OFFSET]
+
+                # color = Colors.WHITE
+
+                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                    if pnpoly(cursor_y, cursor_x, points[0]):
+                        color = Colors.GREEN
+                        self.selected_pt = np.array(pts_arr.squeeze().mean(0))
                     
                 # print self.selected_pt
                 selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
@@ -325,14 +354,14 @@ class Circler(QtGui.QWidget):
                 # print selected_pt_xformed
                 if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
                     color = Colors.BLUE
+                    self.clicked_object_pub.publish(name)
             
                 qp.setPen(color)
                 pen = qp.pen()
                 pen.setWidth(5)
                 qp.setPen(pen)
-                
-                points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0]) + [Y_OFFSET, X_OFFSET]
-                
+                                
+                # rospy.loginfo("Points\n%s" % str(points))
                 for point in points[0]:
                     poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
             
@@ -340,6 +369,7 @@ class Circler(QtGui.QWidget):
                 origin = points[0].min(0)
                 size = points[0].max(0) - origin
                 textRect = QtCore.QRectF(origin[1],origin[0],size[1],size[0])
+                qp.setFont(QtGui.QFont('Decorative', 24))
                 qp.drawText(textRect, QtCore.Qt.AlignCenter, name)
             
         # reset once the click has expired
@@ -378,8 +408,13 @@ class Circler(QtGui.QWidget):
         return projector_interface.srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
-        self.polygons[req.name] = req.polygon
+        self.polygons[req.name] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b))
         return projector_interface.srv.DrawPolygonResponse()
+
+    def handle_clear_polygons(self, req):
+        self.polygons.clear()
+        self.hilights = []
+        return projector_interface.srv.ClearPolygonsResponse()
 
     def __init__(self):
         super(Circler, self).__init__()
@@ -389,6 +424,15 @@ class Circler(QtGui.QWidget):
         while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
             r.sleep()
         self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
+        self.flip = rospy.get_param('~flip', default=False)
+
+        self.projected_cursor = deque([], rospy.get_param('~window_size', 10))
+        self.cursor_pts_xyz = deque([], rospy.get_param('~window_size', 10))
+
+
+        rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
+        rospy.loginfo('Flip        = %s', self.flip)
+
         rospy.loginfo('got homography')
         print self.H
         self.initUI()
@@ -402,11 +446,13 @@ class Circler(QtGui.QWidget):
         rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
         rospy.Service('set_selection_method', projector_interface.srv.SetSelectionMethod, self.set_selection_method)
         rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
+        rospy.Service('clear_polygons', projector_interface.srv.ClearPolygons, self.handle_clear_polygons)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
-                
+        self.clicked_object_pub = rospy.Publisher('clicked_object', String)
+
         timer = PySide.QtCore.QTimer(self)
-        timer.setInterval(50)
+        timer.setInterval(60)
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
