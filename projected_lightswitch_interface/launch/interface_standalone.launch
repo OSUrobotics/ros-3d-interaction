@@ -33,7 +33,11 @@
 	
 	<node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
     	<remap from="pose" to="head_pose"/>
-    	<param name="plane_frame" value="4x4_0"/>
+    	<param name="plane_frame" value="/table"/>
   	</node>
+
+<!-- 	<node name="click" type="click.py" pkg="projector_interface"/>
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote"/>
+ -->
 
 </launch>

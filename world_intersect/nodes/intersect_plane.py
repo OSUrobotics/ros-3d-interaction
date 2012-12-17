@@ -28,6 +28,7 @@ def cast_ray(pose, plane, tfl):
     
     try:
         # pose.header.stamp = tfl.getLatestCommonTime(table.pose.header.frame_id, pose.header.frame_id)
+        tfl.waitForTransform(plane.header.frame_id, pose.header.frame_id, rospy.Time(0), rospy.Duration.from_sec(5))
         pose.header.stamp = rospy.Time(0)
         pose_transformed = tfl.transformPose(plane.header.frame_id, pose)
     except tf.Exception, e:

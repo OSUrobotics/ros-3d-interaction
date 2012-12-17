@@ -25,9 +25,9 @@ class Behaviors:
 			return self.action_client.wait_for_result()
 
 
-if __name__ == '__main__':
-	rospy.init_node('action_test')
-	b = Behaviors()
-	while not rospy.is_shutdown():
-		b.rocker_on()
-		b.rocker_off()
+# if __name__ == '__main__':
+# 	rospy.init_node('action_test')
+# 	b = Behaviors()
+# 	while not rospy.is_shutdown():
+# 		b.rocker_on()
+# 		b.rocker_off()

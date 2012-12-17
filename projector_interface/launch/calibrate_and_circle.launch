@@ -12,6 +12,6 @@
 		<remap from="camera_info" to="$(arg calibration_camera)/camera_info"/>
 		<remap from="intersected_points_cursor" to="/intersected_points"/>
 		<param name="flip" value="false"/>
-		<param name="window_size" value="1"/>
+		<param name="window_size" value="25"/>
 	</node>
 </launch>

@@ -59,4 +59,7 @@
 		<arg name="device_id" value="A00362A15947039A"/> 
  	</include>
 
+	<node name="map_to_tripod_link" pkg="reconfigurable_transform_publisher" type="reconfigurable_transform_publisher.py" args="-0.35 0.6 1.3 0.187381314586 -1.14737963564e-17 0.982287250729 6.01477468724e-17 /map /tripod_link 100.0"/>
+
+
 </launch>
