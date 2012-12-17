@@ -249,8 +249,8 @@ class Circler(QtGui.QWidget):
                     qp.setPen(pen)
                     coords = self.maybe_flip((xformed[1], xformed[0]))
                     rect = QtCore.QRectF(
-                        self.SCREEN_WIDTH  - coords[0]-r/2 + X_OFFSET,
-                        self.SCREEN_HEIGHT - coords[1]-r/2 + Y_OFFSET,
+                        coords[0]-r/2 + X_OFFSET,
+                        coords[1]-r/2 + Y_OFFSET,
                         r,
                         r
                     )
@@ -411,6 +411,11 @@ class Circler(QtGui.QWidget):
         self.polygons[req.name] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b))
         return projector_interface.srv.DrawPolygonResponse()
 
+    def handle_clear_polygons(self, req):
+        self.polygons.clear()
+        self.hilights = []
+        return projector_interface.srv.ClearPolygonsResponse()
+
     def __init__(self):
         super(Circler, self).__init__()
         self.tfl = tf.TransformListener()
@@ -441,6 +446,7 @@ class Circler(QtGui.QWidget):
         rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
         rospy.Service('set_selection_method', projector_interface.srv.SetSelectionMethod, self.set_selection_method)
         rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
+        rospy.Service('clear_polygons', projector_interface.srv.ClearPolygons, self.handle_clear_polygons)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
