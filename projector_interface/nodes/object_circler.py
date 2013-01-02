@@ -315,14 +315,11 @@ class Circler(QtGui.QWidget):
                         qp.setPen(pen)
                         
                         qp.drawLine(head[0],head[1],tail[0],tail[1])                        
-                                                
-                        #rect = QtCore.QRectF(
-                        #    hint_x-r/2,# + X_OFFSET,
-                        #    hint_y-r/2,# + Y_OFFSET,
-                        #    50,
-                        #    50
-                        #)
-                        #qp.drawArc(rect, 0, 360*16)
+
+                        # now force the cursor to the edge of the screen
+                        cursor_x = self.SCREEN_WIDTH
+                        cursor_y = self.SCREEN_HEIGHT
+
                     qp.end()
                     
             # draw any polygons
@@ -330,28 +327,24 @@ class Circler(QtGui.QWidget):
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
-            for name, (polygon, color) in self.polygons.iteritems():
+            # (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, req.text_rect)
+            for name, (polygon, color, name, text_rect) in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
                 points = self.projectPoints(pts_arr, polygon.header)
                 points = cv2.perspectiveTransform(points, self.H)
-                
+
                 if self.flip:
                     points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
-
-                # points += [Y_OFFSET, X_OFFSET]
-
-                # color = Colors.WHITE
 
                 if self.cursor_pts is not None and len(self.projected_cursor) > 0:
                     if pnpoly(cursor_y, cursor_x, points[0]):
                         color = Colors.GREEN
                         self.selected_pt = np.array(pts_arr.squeeze().mean(0))
                     
-                # print self.selected_pt
                 selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
                 selected_pt_xformed = cv2.perspectiveTransform(selected_pt_xformed, self.H).squeeze()
-                # print selected_pt_xformed
+
                 if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
                     color = Colors.BLUE
                     self.clicked_object_pub.publish(name)
@@ -361,15 +354,24 @@ class Circler(QtGui.QWidget):
                 pen.setWidth(5)
                 qp.setPen(pen)
                                 
-                # rospy.loginfo("Points\n%s" % str(points))
                 for point in points[0]:
                     poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
             
                 qp.drawPolygon(poly)
                 origin = points[0].min(0)
                 size = points[0].max(0) - origin
-                textRect = QtCore.QRectF(origin[1],origin[0],size[1],size[0])
-                qp.setFont(QtGui.QFont('Decorative', 24))
+                
+                textRect = poly.boundingRect()
+                if len(text_rect.points) > 0:
+                    text_rect_points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in text_rect.points]]), polygon.header)
+                    text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
+                    if self.flip:
+                       text_rect_points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - text_rect_points[0]) 
+                    text_poly = PySide.QtGui.QPolygon()
+                    for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+                    textRect = text_poly.boundingRect()
+                    
+                qp.setFont(QtGui.QFont('Decorative', 30))
                 qp.drawText(textRect, QtCore.Qt.AlignCenter, name)
             
         # reset once the click has expired
@@ -408,7 +410,7 @@ class Circler(QtGui.QWidget):
         return projector_interface.srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
-        self.polygons[req.name] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b))
+        self.polygons[req.id] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, req.text_rect)
         return projector_interface.srv.DrawPolygonResponse()
 
     def handle_clear_polygons(self, req):
