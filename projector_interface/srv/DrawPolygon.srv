@@ -1,5 +1,6 @@
-string name # the object's name
-bool display_name # whether or not to display the object's name in the interface
+string id                            # the object's unique id
+string label                         # optional text to draw in the object
 geometry_msgs/PolygonStamped polygon # the polygon
-std_msgs/ColorRGBA color # the polygon's color
+geometry_msgs/Polygon text_rect      # rectangle to draw the label in
+std_msgs/ColorRGBA color             # the polygon's color
 ---
