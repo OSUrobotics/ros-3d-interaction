@@ -328,7 +328,7 @@ class Circler(QtGui.QWidget):
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
             # (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, req.text_rect)
-            for name, (polygon, color, name, text_rect) in self.polygons.iteritems():
+            for uid, (polygon, color, label, text_rect) in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
                 points = self.projectPoints(pts_arr, polygon.header)
@@ -347,7 +347,7 @@ class Circler(QtGui.QWidget):
 
                 if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
                     color = Colors.BLUE
-                    self.clicked_object_pub.publish(name)
+                    self.clicked_object_pub.publish(uid)
             
                 qp.setPen(color)
                 pen = qp.pen()
@@ -372,7 +372,7 @@ class Circler(QtGui.QWidget):
                     textRect = text_poly.boundingRect()
                     
                 qp.setFont(QtGui.QFont('Decorative', 30))
-                qp.drawText(textRect, QtCore.Qt.AlignCenter, name)
+                qp.drawText(textRect, QtCore.Qt.AlignCenter, label)
             
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
