@@ -4,19 +4,21 @@ from sensor_msgs.msg import Joy
 from std_msgs.msg import Empty
 import rospy
 
-click_inhibit = False
-
-def uninhibit(args):
-    global click_inhibit
-    click_inhibit = False
+last_val = 0
 
 def joy_cb(msg, args):
     global click_inhibit
+    global last_val
+
     click = msg.buttons[2]
-    if click and not click_inhibit:
-        click_inhibit = True
+    print click, last_val
+    if click and (last_val == 0):
         args[0].publish()
-        rospy.Timer(rospy.Duration(1.0), uninhibit, oneshot=True)
+        last_val = 1
+    elif click:
+        pass
+    else:
+        last_val = 0
 		
 
 if __name__ == '__main__':
