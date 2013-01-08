@@ -74,6 +74,8 @@ class Circler(QtGui.QWidget):
 
     key_handlers = dict()
 
+    click_stale = False
+
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
             if key == e.key():
@@ -101,7 +103,7 @@ class Circler(QtGui.QWidget):
     def click_cb(self, msg):
         self.click = rospy.Time.now()
         # self.sameObject(pt, self.click_loc)
-        
+        self.click_stale = False
         with self.cursor_lock:
             self.click_loc = self.selected_pt
             msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
@@ -347,7 +349,9 @@ class Circler(QtGui.QWidget):
 
                 if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
                     color = Colors.BLUE
-                    self.clicked_object_pub.publish(uid)
+                    if not self.click_stale:
+                        self.clicked_object_pub.publish(uid)
+                        self.click_stale = True
             
                 qp.setPen(color)
                 pen = qp.pen()
@@ -377,6 +381,7 @@ class Circler(QtGui.QWidget):
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
             self.click_loc = CLICK_RESET
+            self.click_stale = False
             self.click_duration = rospy.Duration(2.0)
                  
     def handle_hilight(self, req):
