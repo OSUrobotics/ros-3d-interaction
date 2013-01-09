@@ -1,0 +1,4 @@
+<launch>
+	<node name="click" type="click.py" pkg="projector_interface" output="screen"/>
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote"/>
+</launch>
