@@ -16,6 +16,8 @@ import numpy as np
 from sensor_msgs.msg import PointCloud2
 from geometry_msgs.msg import PointStamped
 
+import rospy.service
+
 table_pose = None
 br = None
 tf_lock = RLock()
@@ -99,14 +101,17 @@ if __name__ == '__main__':
     #)
     r = rospy.Rate(rate)
     while not rospy.is_shutdown():
-        object_cloud, table = detect(detect_srv)
-        if table is not None:
-            with tf_lock:
-                if not table_pose or np.linalg.norm(pt2np(table_pose.pose.position) - pt2np(table.pose.pose.position)) > 0.1:
-                    table_pose = table.pose
-            table_pub.publish(table)
+        try:
+            object_cloud, table = detect(detect_srv)
+            if table is not None:
+                with tf_lock:
+                    if not table_pose or np.linalg.norm(pt2np(table_pose.pose.position) - pt2np(table.pose.pose.position)) > 0.1:
+                        table_pose = table.pose
+                table_pub.publish(table)
 
-        if object_cloud is not None:
-            #set_table_filter_limits(table, clients)
-            object_pub.publish(object_cloud)
-        r.sleep()
+            if object_cloud is not None:
+                #set_table_filter_limits(table, clients)
+                object_pub.publish(object_cloud)
+            r.sleep()
+        except rospy.service.ServiceException, e:
+            pass
