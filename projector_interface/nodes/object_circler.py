@@ -25,6 +25,9 @@ from PySide import QtGui, QtCore
 from PySide.QtGui import QPalette
 from PySide import QtOpenGL
 
+from dynamic_reconfigure.server import Server
+from projector_interface.cfg import InterfaceConfig
+
 #X_OFFSET =  25
 #Y_OFFSET = -25
 
@@ -75,6 +78,7 @@ class Circler(QtGui.QWidget):
     key_handlers = dict()
 
     click_stale = False
+    config_inited = False
 
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
@@ -423,6 +427,18 @@ class Circler(QtGui.QWidget):
         self.hilights = []
         return projector_interface.srv.ClearPolygonsResponse()
 
+    def reconfig_cb(self, config, level):
+        # ignore the first config we get
+        if self.config_inited:
+            self.projected_cursor = deque(self.projected_cursor, config['window_size'])
+            self.cursor_pts_xyz   = deque(self.cursor_pts_xyz,   config['window_size'])
+
+        else:
+            config['window_size'] = self.projected_cursor.maxlen
+            self.config_inited = True
+
+        return config
+
     def __init__(self):
         super(Circler, self).__init__()
         self.tfl = tf.TransformListener()
@@ -434,7 +450,7 @@ class Circler(QtGui.QWidget):
         self.flip = rospy.get_param('~flip', default=False)
 
         self.projected_cursor = deque([], rospy.get_param('~window_size', 10))
-        self.cursor_pts_xyz = deque([], rospy.get_param('~window_size', 10))
+        self.cursor_pts_xyz   = deque([], rospy.get_param('~window_size', 10))
 
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
@@ -457,6 +473,8 @@ class Circler(QtGui.QWidget):
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
+        reconfig_srv = Server(InterfaceConfig, self.reconfig_cb)
+
 
         timer = PySide.QtCore.QTimer(self)
         timer.setInterval(60)
