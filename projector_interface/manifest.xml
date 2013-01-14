@@ -20,6 +20,7 @@
   <depend package="image_geometry"/>
   <depend package="pr2_python"/>
   <depend package="tabletop_object_detector"/>
+  <depend package="dynamic_reconfigure"/>
   <rosdep name="python-scipy"/>
   <rosdep name="python-qt-bindings"/>
   <rosdep name="python-imaging"/>
