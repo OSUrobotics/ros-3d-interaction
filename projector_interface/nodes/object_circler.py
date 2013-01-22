@@ -28,6 +28,8 @@ from PySide import QtOpenGL
 from dynamic_reconfigure.server import Server
 from projector_interface.cfg import InterfaceConfig
 
+import inspect
+
 #X_OFFSET =  25
 #Y_OFFSET = -25
 
@@ -90,7 +92,8 @@ class Circler(QtGui.QWidget):
 
 
     def escHandler(self, e):
-        sys.exit(0)
+        # sys.exit(0)
+        QtGui.QApplication.quit()
 
     def initUI(self):
         self.addKeyHandler(16777216, self.escHandler)
@@ -149,6 +152,7 @@ class Circler(QtGui.QWidget):
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
     def projectPoints(self, points, point_header):
+        caller = inspect.stack()[1][3]
         pts_out = []
         for point in points[0]:
             pt = PointStamped()
@@ -202,7 +206,7 @@ class Circler(QtGui.QWidget):
         return coords 
 
     def paintEvent(self, e):
-        if rospy.is_shutdown(): sys.exit()
+        if rospy.is_shutdown(): QtGui.QApplication.quit()
         # circle the objects
         r = 150
         
@@ -212,6 +216,8 @@ class Circler(QtGui.QWidget):
         cursor_coords = None
 
         with self.object_lock:
+
+            # Draw the circles
             if self.objects is not None and self.projected_objects is not None:
                 # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
                 cursor = np.median(self.projected_cursor, 0)
@@ -320,12 +326,7 @@ class Circler(QtGui.QWidget):
                         pen.setWidth(r)
                         qp.setPen(pen)
                         
-                        qp.drawLine(head[0],head[1],tail[0],tail[1])                        
-
-                        # now force the cursor to the edge of the screen
-                        cursor_x = self.SCREEN_WIDTH
-                        cursor_y = self.SCREEN_HEIGHT
-
+                        qp.drawLine(head[0],head[1],tail[0],tail[1])
                     qp.end()
                     
             # draw any polygons
@@ -387,6 +388,8 @@ class Circler(QtGui.QWidget):
             self.click_loc = CLICK_RESET
             self.click_stale = False
             self.click_duration = rospy.Duration(2.0)
+
+        self.rate_pub.publish()
                  
     def handle_hilight(self, req):
         pt = self.tfl.transformPoint(self.object_header.frame_id, req.object).point
@@ -471,6 +474,9 @@ class Circler(QtGui.QWidget):
         rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
         rospy.Service('clear_polygons', projector_interface.srv.ClearPolygons, self.handle_clear_polygons)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
+
+        self.rate_pub = rospy.Publisher('rate', Empty)
+
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
         reconfig_srv = Server(InterfaceConfig, self.reconfig_cb)
@@ -481,7 +487,8 @@ class Circler(QtGui.QWidget):
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
-        sys.exit(app.exec_())
+        # sys.exit(app.exec_())
+        app.exec_()
         rospy.spin()
 
 if __name__ == '__main__':
