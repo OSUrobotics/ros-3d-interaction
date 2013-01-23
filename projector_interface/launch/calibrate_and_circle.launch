@@ -1,5 +1,6 @@
 <launch>
 	<arg name="calibration_camera" default="calib_cam"/>
+	<arg name="circle_objects" default="true"/>
 	<env name="DISPLAY" value=":0.0"/>
 <!-- 	<node name="$(arg calibration_camera)" pkg="usb_cam" type="usb_cam">
 	</node>
@@ -13,5 +14,6 @@
 		<remap from="intersected_points_cursor" to="/intersected_points"/>
 		<param name="flip" value="false"/>
 		<param name="window_size" value="25"/>
+		<param name="circle_objects" value="$(arg circle_objects)"/>
 	</node>
 </launch>

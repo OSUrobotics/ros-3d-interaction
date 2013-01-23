@@ -218,7 +218,7 @@ class Circler(QtGui.QWidget):
         with self.object_lock:
 
             # Draw the circles
-            if self.objects is not None and self.projected_objects is not None:
+            if self.objects is not None and self.projected_objects is not None and self.circle_objects:
                 # is dist(cursor,pt) <= dist(cursor,obj) for all obj?
                 cursor = np.median(self.projected_cursor, 0)
                 distances = [self.dist(pp,cursor) for pp in self.projected_objects[0]]
@@ -334,7 +334,6 @@ class Circler(QtGui.QWidget):
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
                         
-            # (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, req.text_rect)
             for uid, (polygon, color, label, text_rect) in self.polygons.iteritems():
                 poly = PySide.QtGui.QPolygon()
                 pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
@@ -454,10 +453,12 @@ class Circler(QtGui.QWidget):
 
         self.projected_cursor = deque([], rospy.get_param('~window_size', 10))
         self.cursor_pts_xyz   = deque([], rospy.get_param('~window_size', 10))
+        self.circle_objects   = rospy.get_param('~circle_objects', True)
 
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
+        rospy.loginfo('Circle      = %s', self.circle_objects)
 
         rospy.loginfo('got homography')
         print self.H
