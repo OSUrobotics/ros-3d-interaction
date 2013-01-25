@@ -380,7 +380,7 @@ class Circler(QtGui.QWidget):
                     textRect = text_poly.boundingRect()
                     
                 qp.setFont(QtGui.QFont('Decorative', 30))
-                qp.drawText(textRect, QtCore.Qt.AlignCenter, label)
+                qp.drawText(textRect, QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap , label)
             
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
