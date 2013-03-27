@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('world_intersect')
 import rospy
-from tabletop_object_detector.msg import Table
+#from tabletop_object_detector.msg import Table
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point, PointStamped, PoseStamped
 from sensor_msgs.msg import PointCloud2

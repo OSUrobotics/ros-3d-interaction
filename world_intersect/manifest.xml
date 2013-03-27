@@ -17,7 +17,7 @@
   <depend package="tf"/>
   <!-- <depend package="octomap_ros"/> -->
   <!-- depend package="octomap_msgs"/ -->
-  <depend package="tabletop_object_detector"/>
+  <!-- <depend package="tabletop_object_detector"/> -->
   <depend package="pr2_python"/>
   <rosdep name="pymouse"/>
 </package>
