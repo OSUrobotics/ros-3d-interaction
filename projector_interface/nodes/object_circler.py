@@ -114,7 +114,7 @@ class Circler(QtGui.QWidget):
         with self.cursor_lock:
             self.click_loc = self.selected_pt
             msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
-            msg.header.frame_id = '/table'
+            msg.header.frame_id = '/table_marker'
             msg.header.stamp = rospy.Time.now()
             self.click_stats_pub.publish(msg)
         
@@ -351,7 +351,7 @@ class Circler(QtGui.QWidget):
                 selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
                 selected_pt_xformed = cv2.perspectiveTransform(selected_pt_xformed, self.H).squeeze()
 
-                if pnpoly(selected_pt_xformed[0], selected_pt_xformed[1], points[0]):
+                if pnpoly(cursor_y, cursor_x, points[0]) and (rospy.Time.now() - self.click) < self.click_duration:
                     color = Colors.BLUE
                     if not self.click_stale:
                         self.clicked_object_pub.publish(uid)
@@ -405,7 +405,7 @@ class Circler(QtGui.QWidget):
             rospy.sleep(0.05)
         with self.cursor_lock:
             msg = xyz_array_to_pointcloud2(np.array([list(p) + [0] for p in self.projected_cursor]))
-            msg.header.frame_id = '/table'
+            msg.header.frame_id = '/table_marker'
             msg.header.stamp = rospy.Time.now()
             
             pt_msg = PointStamped()
