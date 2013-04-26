@@ -1,7 +1,7 @@
 <package>
   <description brief="world_intersect">
 
-     world_intersect
+     Nodes for intersecting rays with various types of world models.
 
   </description>
   <author>Daniel Lazewatsky</author>

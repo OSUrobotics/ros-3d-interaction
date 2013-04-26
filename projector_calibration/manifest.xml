@@ -1,7 +1,7 @@
 <package>
   <description brief="projector_calibration">
 
-     projector_calibration
+    Provides a node for calibrating a projector to a camera with a known TF frame. 
 
   </description>
   <author>Daniel Lazewatsky</author>
