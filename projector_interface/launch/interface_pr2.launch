@@ -7,6 +7,7 @@
     <arg name="stereo" value="false"/>
     <arg name="kinect_frame_prefix" value="camera"/>
     <arg name="flatten_table" value="true"/>
+    <arg name="reactive_grasping" value="true"/>
   </include>
 
   <include file="$(find openni_launch)/launch/kinect_frames.launch">
