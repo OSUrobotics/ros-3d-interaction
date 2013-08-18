@@ -1,7 +1,7 @@
 <launch>
+	<arg name="flip" default="false"/>
 	<arg name="calibration_camera" default="calib_cam"/>
 	<arg name="circle_objects" default="true"/>
-    <arg name="flip" default="false"/>
 	<env name="DISPLAY" value=":0.0"/>
 <!-- 	<node name="$(arg calibration_camera)" pkg="usb_cam" type="usb_cam">
 	</node>
