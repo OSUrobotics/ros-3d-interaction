@@ -1,4 +1,5 @@
 <launch>
+	<arg name="flip" default="false"/>
 	<arg name="calibration_camera" default="calib_cam"/>
 	<arg name="circle_objects" default="true"/>
 	<env name="DISPLAY" value=":0.0"/>
@@ -12,7 +13,7 @@
 	<node name="object_circler" type="object_circler.py" pkg="projector_interface">
 		<remap from="camera_info" to="$(arg calibration_camera)/camera_info"/>
 		<remap from="intersected_points_cursor" to="/intersected_points"/>
-		<param name="flip" value="false"/>
+		<param name="flip" value="$(arg flip)"/>
 		<param name="window_size" value="25"/>
 		<param name="circle_objects" value="$(arg circle_objects)"/>
 	</node>
