@@ -15,11 +15,11 @@
   <depend package="sensor_msgs"/>
   <depend package="message_filters"/>
   <depend package="tf"/>
-  <!-- <depend package="brain_stuff"/> -->
   <!-- <depend package="octomap_ros"/> -->
   <!-- depend package="octomap_msgs"/ -->
   <depend package="tabletop_object_detector"/>
   <depend package="pr2_python"/>
+  <rosdep name="pymouse"/>
 </package>
 
 
