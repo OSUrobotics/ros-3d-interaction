@@ -4,9 +4,9 @@
   <include file="$(find pr2_machine)/pr2.machine" />
 
   <include file="$(find pr2_tabletop_manipulation_launch)/launch/pr2_tabletop_manipulation.launch">
-    <arg name="stereo" value="false"/>
-    <arg name="kinect_frame_prefix" value="camera"/>
-    <arg name="flatten_table" value="true"/>
+    <arg name="stereo" value="true"/>
+    <arg name="kinect_frame_prefix" value="head_mount_kinect"/>
+    <arg name="flatten_table" value="false"/>
     <arg name="reactive_grasping" value="true"/>
   </include>
 
@@ -30,6 +30,7 @@
 	</include-->
   <node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
     <remap from="pose" to="head_pose"/>
+    <param name="plane_frame" value="table"/>
   </node>
 
 	<!--include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
