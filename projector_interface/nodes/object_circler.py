@@ -31,7 +31,7 @@ from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
-from std_msgs.msg import Empty, String as String
+from std_msgs.msg import Empty, String as String, Duration
 from geometry_msgs.msg import PointStamped
 import image_geometry
 from projector_interface._point_cloud import read_points_np
@@ -100,6 +100,7 @@ class Circler(QtGui.QWidget):
     object_lock = RLock()
     intersected_lock = RLock()
     cursor_lock = RLock()
+    polygon_lock = RLock()
     
     hilights = []
     polygons = dict()
@@ -128,6 +129,7 @@ class Circler(QtGui.QWidget):
         p.setColor(QPalette.Background, QtGui.QColor(0,0,0))
         self.setPalette(p)
         self.showFullScreen()
+        # self.show()
 
     def info_cb(self, info):
         tmp_model = image_geometry.PinholeCameraModel()
@@ -233,6 +235,7 @@ class Circler(QtGui.QWidget):
         return coords 
 
     def paintEvent(self, e):
+        paint_start = rospy.Time.now()
         if rospy.is_shutdown(): QtGui.QApplication.quit()
         # circle the objects
         r = 150
@@ -298,116 +301,96 @@ class Circler(QtGui.QWidget):
                    
             # draw the cursor 
             r = 10
-            with self.object_lock:
-                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    xformed = np.median(self.projected_cursor, 0)
-                    coords = self.maybe_flip((xformed[1], xformed[0]))
-                    cursor_x = coords[0]
-                    cursor_y = coords[1]
-                    
-                    qp = QtGui.QPainter()
-                    qp.begin(self)
-                    qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
-                    color = Colors.BLUE
-                    qp.setPen(color)
-                    pen = qp.pen()
-                    pen.setWidth(5)
-                    qp.setPen(pen)
+            if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                xformed = np.median(self.projected_cursor, 0)
+                coords = self.maybe_flip((xformed[1], xformed[0]))
+                cursor_x = coords[0]
+                cursor_y = coords[1]
+                
+                qp = QtGui.QPainter()
+                qp.begin(self)
+                qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing);
+                color = Colors.BLUE
+                qp.setPen(color)
+                pen = qp.pen()
+                pen.setWidth(5)
+                qp.setPen(pen)
 
-                    # if the cursor is on-screen, draw it
-                    if cursor_x > 0 and cursor_y > 0 and cursor_x < self.SCREEN_WIDTH and cursor_y < self.SCREEN_HEIGHT:
-                        rect = QtCore.QRectF(
-                            cursor_x-r/2,# + X_OFFSET,
-                            cursor_y-r/2,# + Y_OFFSET,
-                            r,
-                            r
-                        )
-                        qp.drawArc(rect, 0, 360*16)
-                    # if the cursor is off screen, draw a hint as to where it is
-                    else:
-                        hint_x = cursor_x
-                        if cursor_x < 0:
-                            hint_x = 0
-                        if cursor_x > self.SCREEN_WIDTH:
-                            hint_x = self.SCREEN_WIDTH
-                            
-                        hint_y = cursor_y
-                        if cursor_y < 0:
-                            hint_y = 0
-                        if cursor_y > self.SCREEN_HEIGHT:
-                            hint_y = self.SCREEN_HEIGHT
+                # if the cursor is on-screen, draw it
+                if cursor_x > 0 and cursor_y > 0 and cursor_x < self.SCREEN_WIDTH and cursor_y < self.SCREEN_HEIGHT:
+                    rect = QtCore.QRectF(
+                        cursor_x-r/2,# + X_OFFSET,
+                        cursor_y-r/2,# + Y_OFFSET,
+                        r,
+                        r
+                    )
+                    qp.drawArc(rect, 0, 360*16)
+                # if the cursor is off screen, draw a hint as to where it is
+                else:
+                    hint_x = cursor_x
+                    if cursor_x < 0:
+                        hint_x = 0
+                    if cursor_x > self.SCREEN_WIDTH:
+                        hint_x = self.SCREEN_WIDTH
                         
-                        
-                        head = np.array([hint_x, hint_y])# + [X_OFFSET, Y_OFFSET]
-                        tail_x, tail_y = 0,0
-                        if hint_x == 0:
-                            tail_x =  50
-                        if hint_x == self.SCREEN_WIDTH:
-                            tail_x = -50
-                        if hint_y == 0:
-                            tail_y =  50
-                        if hint_y == self.SCREEN_HEIGHT:
-                            tail_y = -50
-                        tail = head + [tail_x, tail_y]
-                        
-                        pen.setWidth(r)
-                        qp.setPen(pen)
-                        
-                        qp.drawLine(head[0],head[1],tail[0],tail[1])
-                    qp.end()
+                    hint_y = cursor_y
+                    if cursor_y < 0:
+                        hint_y = 0
+                    if cursor_y > self.SCREEN_HEIGHT:
+                        hint_y = self.SCREEN_HEIGHT
+                    
+                    
+                    head = np.array([hint_x, hint_y])# + [X_OFFSET, Y_OFFSET]
+                    tail_x, tail_y = 0,0
+                    if hint_x == 0:
+                        tail_x =  50
+                    if hint_x == self.SCREEN_WIDTH:
+                        tail_x = -50
+                    if hint_y == 0:
+                        tail_y =  50
+                    if hint_y == self.SCREEN_HEIGHT:
+                        tail_y = -50
+                    tail = head + [tail_x, tail_y]
+                    
+                    pen.setWidth(r)
+                    qp.setPen(pen)
+                    
+                    qp.drawLine(head[0],head[1],tail[0],tail[1])
+                qp.end()
                     
             # draw any polygons
             qp = QtGui.QPainter()
             qp.begin(self)
             qp.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-                        
-            for uid, (polygon, color, label, text_rect) in self.polygons.iteritems():
-                poly = PySide.QtGui.QPolygon()
-                pts_arr = np.array([[(p.x,p.y,p.z) for p in polygon.polygon.points]])
-                points = self.projectPoints(pts_arr, polygon.header)
-                points = cv2.perspectiveTransform(points, self.H)
+            with self.polygon_lock:
+                for uid, (poly, color, label, textRect) in self.polygons.iteritems():
+                    cursor_inside_polygon = poly.containsPoint(QtCore.QPoint(cursor_x,cursor_y), QtCore.Qt.OddEvenFill)
 
-                if self.flip:
-                    points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
-
-                if self.cursor_pts is not None and len(self.projected_cursor) > 0:
-                    if pnpoly(cursor_y, cursor_x, points[0]):
-                        color = Colors.GREEN
-                        self.selected_pt = np.array(pts_arr.squeeze().mean(0))
+                    # Check if the cursor is hovering over this polygon
+                    if self.cursor_pts is not None and len(self.projected_cursor) > 0:
+                        if cursor_inside_polygon:
+                            color = Colors.GREEN
+                            self.selected_pt = np.array
+                            self.selected_pt = np.array(np.mean(poly.toList()).toTuple())
                     
-                selected_pt_xformed = self.projectPoints(np.array([[self.click_loc.squeeze()]]), polygon.header)
-                selected_pt_xformed = cv2.perspectiveTransform(selected_pt_xformed, self.H).squeeze()
-
-                if pnpoly(cursor_y, cursor_x, points[0]) and (rospy.Time.now() - self.click) < self.click_duration:
-                    color = Colors.BLUE
-                    if not self.click_stale:
-                        self.clicked_object_pub.publish(uid)
-                        self.click_stale = True
-            
-                qp.setPen(color)
-                pen = qp.pen()
-                pen.setWidth(5)
-                qp.setPen(pen)
-                                
-                for point in points[0]:
-                    poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
-            
-                qp.drawPolygon(poly)
-                origin = points[0].min(0)
-                size = points[0].max(0) - origin
+                    # Check if this polygon has been clicked
+                    # TODO it looks like there might be a bug in here making clicked polygons
+                    # blue only when there's also a hover (should that and be an or?)
+                    if cursor_inside_polygon and (rospy.Time.now() - self.click) < self.click_duration:
+                        color = Colors.BLUE
+                        if not self.click_stale:
+                            self.clicked_object_pub.publish(uid)
+                            self.click_stale = True
                 
-                textRect = poly.boundingRect()
-                if len(text_rect.points) > 0:
-                    text_rect_points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in text_rect.points]]), polygon.header)
-                    text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
-                    if self.flip:
-                       text_rect_points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - text_rect_points[0]) 
-                    text_poly = PySide.QtGui.QPolygon()
-                    for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
-                    textRect = text_poly.boundingRect()
-                    
-                qp.setFont(QtGui.QFont('Decorative', 30))
-                qp.drawText(textRect, QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap , label)
+                    qp.setPen(color)
+                    pen = qp.pen()
+                    pen.setWidth(5)
+                    qp.setPen(pen)
+                                              
+                    qp.drawPolygon(poly)
+
+                    qp.setFont(QtGui.QFont('Decorative', 30))
+                    qp.drawText(textRect, QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap , label)
             
         # reset once the click has expired
         if (rospy.Time.now() - self.click) >= self.click_duration:
@@ -416,6 +399,7 @@ class Circler(QtGui.QWidget):
             self.click_duration = rospy.Duration(2.0)
 
         self.rate_pub.publish()
+        self.dur_pub.publish(rospy.Time.now() - paint_start)
                  
     def handle_hilight(self, req):
         pt = self.tfl.transformPoint(self.object_header.frame_id, req.object).point
@@ -448,12 +432,36 @@ class Circler(QtGui.QWidget):
         return projector_interface.srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
-        self.polygons[req.id] = (req.polygon, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, req.text_rect)
+        with self.polygon_lock:
+            # Project the polygon points onto the interface before saving them
+            poly = PySide.QtGui.QPolygon()
+            pts_arr = np.array([[(p.x,p.y,p.z) for p in req.polygon.polygon.points]])
+            points = self.projectPoints(pts_arr, req.polygon.header)
+            points = cv2.perspectiveTransform(points, self.H)
+            if self.flip:
+                points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
+            for point in points[0]:
+                poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+
+            textRect = poly.boundingRect()
+            # Project the text rect points onto the interface
+            if len(req.text_rect.points) > 0:
+                text_rect_points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in req.text_rect.points]]), req.polygon.header)
+                text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
+                if self.flip:
+                   text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
+                text_poly = PySide.QtGui.QPolygon()
+                for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+                textRect = text_poly.boundingRect()
+
+            self.polygons[req.id] = (poly, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, textRect)
+
         return projector_interface.srv.DrawPolygonResponse()
 
     def handle_clear_polygons(self, req):
-        self.polygons.clear()
-        self.hilights = []
+        with self.polygon_lock:
+            self.polygons.clear()
+            self.hilights = []
         return projector_interface.srv.ClearPolygonsResponse()
 
     def reconfig_cb(self, config, level):
@@ -482,6 +490,7 @@ class Circler(QtGui.QWidget):
         self.cursor_pts_xyz   = deque([], rospy.get_param('~window_size', 10))
         self.circle_objects   = rospy.get_param('~circle_objects', True)
 
+        # self.addKeyHandler(67, QtGui.QApplication.quit)
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
@@ -492,7 +501,7 @@ class Circler(QtGui.QWidget):
         self.initUI()
         rospy.Subscriber('object_cloud', PointCloud2, self.object_cb)
         rospy.Subscriber('click', Empty, self.click_cb)
-        rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb)
+        rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb, queue_size=1)
         rospy.Subscriber('intersected_points_cursor', PointCloud2, self.cursor_cb)
         rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
         rospy.Service('hilight_object', projector_interface.srv.HilightObject, self.handle_hilight)
@@ -504,6 +513,7 @@ class Circler(QtGui.QWidget):
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
 
         self.rate_pub = rospy.Publisher('rate', Empty)
+        self.dur_pub = rospy.Publisher('duration', Duration)
 
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
@@ -511,7 +521,7 @@ class Circler(QtGui.QWidget):
 
 
         timer = PySide.QtCore.QTimer(self)
-        timer.setInterval(60)
+        timer.setInterval(30)
         timer.timeout.connect(self.update)
         timer.start()
         rospy.loginfo('interface started')
