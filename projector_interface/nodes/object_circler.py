@@ -194,6 +194,8 @@ class Circler(QtGui.QGraphicsView):
                 self.int_ages.append(rospy.Time.now())
 
     def cursor_cb(self, msg):
+        if not self.cursor_timer.isActive():
+            self.cursor_timer.start()
         with self.cursor_lock:
             objects = read_points_np(msg, masked=False)
             if objects.shape[1] == 0: return
@@ -204,6 +206,9 @@ class Circler(QtGui.QGraphicsView):
             #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
+
+    def update_cursor(self):
+        with self.cursor_lock:
             ############# Moved from paintEvent #############
             xformed = np.median(self.projected_cursor, 0)
             coords = self.maybe_flip((xformed[1], xformed[0]))
@@ -220,9 +225,11 @@ class Circler(QtGui.QGraphicsView):
             # self.gfx_scene.update(cursor_rect)
             # self.gfx_scene.update(self.last_cursor_rect)
             self.gfx_scene.invalidate(cursor_rect)
-            # self.gfx_scene.invalidate(self.last_cursor_rect)
-            # self.last_cursor_rect = self.obj_cursor.boundingRect()
-        # self.updateIntersectedPolys()
+            self.gfx_scene.invalidate(self.last_cursor_rect)
+            self.last_cursor_rect = self.obj_cursor.boundingRect()
+        self.updateIntersectedPolys()
+        self.gfx_scene.invalidate(cursor_rect)
+
 
     # TODO this may need a more efficient implementaion that doesn't look at all polygons
     def updateIntersectedPolys(self):
@@ -295,6 +302,7 @@ class Circler(QtGui.QGraphicsView):
         if self.flip:
             return self.SCREEN_WIDTH - coords[0], self.SCREEN_HEIGHT - coords[1]
         return coords 
+
 
     # def paintEvent(self, e):
     #     print 'paintevent'
@@ -590,10 +598,10 @@ class Circler(QtGui.QGraphicsView):
         reconfig_srv = Server(InterfaceConfig, self.reconfig_cb)
 
 
-        timer = PySide.QtCore.QTimer(self)
-        timer.setInterval(30)
-        timer.timeout.connect(self.update)
-        # timer.start()
+        self.cursor_timer = PySide.QtCore.QTimer(self)
+        self.cursor_timer.setInterval(30)
+        self.cursor_timer.timeout.connect(self.update_cursor)
+        
         rospy.loginfo('interface started')
         # sys.exit(app.exec_())
         app.exec_()
