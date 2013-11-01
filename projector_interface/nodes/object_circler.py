@@ -77,9 +77,10 @@ class Colors:
     BLUE  = QtGui.QColor(  0,135,189)
 
 class PolygonInfo:
-    def __init__(self, item, active=False):
+    def __init__(self, item, label='', active=False):
         self.item = item
         self.active = active
+        self.label = label
 
 # class Circler(QtGui.QWidget):
 class Circler(QtGui.QGraphicsView):
@@ -514,6 +515,8 @@ class Circler(QtGui.QGraphicsView):
             for point in points[0]:
                 poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
 
+            poly_item = self.gfx_scene.addPolygon(poly, pen=self.POLYGON_PEN)
+
             textRect = poly.boundingRect()
             # Project the text rect points onto the interface
             if len(req.text_rect.points) > 0:
@@ -525,8 +528,19 @@ class Circler(QtGui.QGraphicsView):
                 for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
                 textRect = text_poly.boundingRect()
 
+                if req.label:
+                    # qp.setFont(QtGui.QFont('Decorative', 30))
+                    # qp.drawText(textRect, QtCore.Qt.AlignCenter | QtCore.Qt.TextWordWrap , label)
+                    font = QtGui.QFont('Decorative', 30)
+                    # self.gfx_scene.addText(req.label, font)
+                    text_item = PySide.QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.gfx_scene)
+                    text_item.setFont(font)
+                    text_item.setBrush(QtGui.QBrush(Colors.WHITE))
+                    text_item.setPos(textRect.topLeft())
+
+
             # self.polygons[req.id] = (poly, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, textRect)
-            self.polygons[req.id] = PolygonInfo(self.gfx_scene.addPolygon(poly, pen=self.POLYGON_PEN))
+            self.polygons[req.id] = PolygonInfo(poly_item, req.label)
             # self.gfx_scene.update(self.polygons[req.id].item.boundingRect())
             self.gfx_scene.invalidate(self.polygons[req.id].item.boundingRect())
 
@@ -536,7 +550,7 @@ class Circler(QtGui.QGraphicsView):
         with self.polygon_lock:
             for poly in self.polygons.values():
                 self.gfx_scene.removeItem(poly.item)
-                self.gfx_scene.invalidate(item.boundingRect())
+                self.gfx_scene.invalidate(poly.item.boundingRect())
             self.polygons.clear()
             self.hilights = []
             # self.gfx_scene.update(self.gfx_scene.sceneRect())
