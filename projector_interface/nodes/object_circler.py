@@ -301,7 +301,7 @@ class Circler(QtGui.QGraphicsView):
     
     def maybe_flip(self, coords):
         if self.flip:
-            return self.SCREEN_WIDTH - coords[0], self.SCREEN_HEIGHT - coords[1]
+            return self.width() - coords[0], self.height() - coords[1]
         return coords 
 
 
@@ -511,7 +511,7 @@ class Circler(QtGui.QGraphicsView):
             points = self.projectPoints(pts_arr, req.polygon.header)
             points = cv2.perspectiveTransform(points, self.H)
             if self.flip:
-                points[0] = ([self.SCREEN_HEIGHT, self.SCREEN_WIDTH] - points[0])
+                points[0] = ([self.height(), self.width()] - points[0])
             for point in points[0]:
                 poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
 
