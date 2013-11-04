@@ -43,7 +43,7 @@ import cv2
 import numpy as np
 from collections import deque
 from threading import RLock
-import sys
+import sys, signal
 
 from matplotlib.nxutils import pnpoly
 
@@ -211,6 +211,9 @@ class Circler(QtGui.QGraphicsView):
 
 
     def update_cursor(self):
+        if rospy.is_shutdown():
+            QtGui.QApplication.quit()
+
         with self.cursor_lock:
             ############# Moved from paintEvent #############
             xformed = np.median(self.projected_cursor, 0)
