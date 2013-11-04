@@ -149,11 +149,13 @@ class Circler(QtGui.QGraphicsView):
         self.setScene(self.gfx_scene)
 
         self.addKeyHandler(16777216, self.escHandler)
-        # p = QPalette()
-        # p.setColor(QPalette.Background, QtGui.QColor(0,0,0))
-        # self.setPalette(p)
+
         self.showFullScreen()
-        # self.show()
+
+        # Manually set the scene rect to prevent the view
+        # from scrolling to fit off-screen objects
+        self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
+        self.setSceneRect(0,0,self.width(),self.height())
 
     def info_cb(self, info):
         tmp_model = image_geometry.PinholeCameraModel()
