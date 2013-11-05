@@ -55,7 +55,7 @@ from PySide import QtOpenGL
 from dynamic_reconfigure.server import Server
 from projector_interface.cfg import InterfaceConfig
 
-import inspect
+from functools import partial
 
 #X_OFFSET =  25
 #Y_OFFSET = -25
@@ -77,10 +77,12 @@ class Colors:
     BLUE  = QtGui.QColor(  0,135,189)
 
 class PolygonInfo:
-    def __init__(self, item, label='', active=False):
+    def __init__(self, item, uid, label='', active=False):
         self.item = item
+        self.uid = uid
         self.active = active
         self.label = label
+        self.clicked = False
 
 # class Circler(QtGui.QWidget):
 class Circler(QtGui.QGraphicsView):
@@ -88,6 +90,7 @@ class Circler(QtGui.QGraphicsView):
     H = None
     POLYGON_PEN = QtGui.QPen(Colors.WHITE, 5)
     ACTIVE_POLYGON_PEN = QtGui.QPen(Colors.GREEN, 5)
+    CLICKED_OBJECT_PEN = QtGui.QPen(Colors.BLUE, 5)
     objects = None  
     projected_objects = None
     int_objects = None  
@@ -95,7 +98,7 @@ class Circler(QtGui.QGraphicsView):
     int_ages = []
     click = rospy.Time(0)
     click_loc = np.float64([-1,-1,-1])
-    click_duration = rospy.Duration(2.0)
+    click_duration = rospy.Duration(1.0)
     
     selected_pt = np.array([])
     
@@ -120,6 +123,8 @@ class Circler(QtGui.QGraphicsView):
     click_stale = False
     config_inited = False
 
+    click = QtCore.Signal()
+
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
             if key == e.key():
@@ -134,6 +139,9 @@ class Circler(QtGui.QGraphicsView):
         QtGui.QApplication.quit()
 
     def initUI(self):
+        self.resetClickedObject()
+        self.resetActiveObject()
+        self.active_object = PolygonInfo(QtGui.QGraphicsPolygonItem(), -1, label='\x00')
         self.gfx_scene = QtGui.QGraphicsScene()
         self.gfx_scene.setBackgroundBrush(QtGui.QColor(0, 0, 0))
 
@@ -157,16 +165,41 @@ class Circler(QtGui.QGraphicsView):
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.setSceneRect(0,0,self.width(),self.height())
 
+    def resetClick(self, obj):
+        obj.item.setPen(self.POLYGON_PEN)
+        obj.clicked = False
+        self.gfx_scene.invalidate(obj.item.boundingRect())
+        self.resetClickedObject()
+
+    def resetClickedObject(self):
+        self.clicked_object = PolygonInfo(QtGui.QGraphicsPolygonItem(), -1, label='\x00')
+
+    def resetActiveObject(self):
+        self.active_object = PolygonInfo(QtGui.QGraphicsPolygonItem(), -1, label='\x00')
+
     def info_cb(self, info):
         tmp_model = image_geometry.PinholeCameraModel()
         tmp_model.fromCameraInfo(info)
         self.model = tmp_model
         self.info_sub.unregister()
-        
+    
+
+    def handleClick(self):
+        # Make sure the click was on an object, and that nothing is already clicked
+        if (self.active_object.label != '\x00') and (self.clicked_object.label == '\x00'):
+            self.clicked_object = self.active_object
+            self.clicked_object.item.setPen(self.CLICKED_OBJECT_PEN)
+            self.clicked_object.clicked = True
+            self.clicked_object_pub.publish(self.clicked_object.uid)
+            self.gfx_scene.invalidate(self.clicked_object.item.boundingRect())
+            QtCore.QTimer.singleShot(1000*self.click_duration.to_sec(), partial(self.resetClick, self.clicked_object))
+
     def click_cb(self, msg):
-        self.click = rospy.Time.now()
+        # self.click = rospy.Time.now()
         # self.sameObject(pt, self.click_loc)
         self.click_stale = False
+        self.click.emit()
+
         with self.cursor_lock:
             self.click_loc = self.selected_pt
             msg = xyz_array_to_pointcloud2(np.array(self.cursor_pts_xyz))
@@ -209,7 +242,6 @@ class Circler(QtGui.QGraphicsView):
             #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
-
     def update_cursor(self):
         if rospy.is_shutdown():
             QtGui.QApplication.quit()
@@ -242,21 +274,24 @@ class Circler(QtGui.QGraphicsView):
         with self.polygon_lock:
             with self.cursor_lock:
                 cursor_center = self.last_cursor_rect.center()
+            self.resetActiveObject()
             for info in self.polygons.values():
-                dirty = False
-                if info.item.polygon().containsPoint(cursor_center, QtCore.Qt.OddEvenFill):
-                    dirty = not info.active 
-                    info.active = True
-                    info.item.setPen(self.ACTIVE_POLYGON_PEN)
-                else:
-                    dirty = info.active
-                    info.active = False
-                    info.item.setPen(self.POLYGON_PEN)
-                if dirty:
-                    self.gfx_scene.invalidate(info.item.boundingRect())
+                if not info.clicked:
+                    dirty = False
+                    if info.item.polygon().containsPoint(cursor_center, QtCore.Qt.OddEvenFill):
+                        dirty = not info.active 
+                        info.active = True
+                        info.item.setPen(self.ACTIVE_POLYGON_PEN)
+                        self.active_object = info
+                    else:
+                        dirty = info.active
+                        info.active = False
+                        info.item.setPen(self.POLYGON_PEN)
+                        self.resetClickedObject()
+                    if dirty:
+                        self.gfx_scene.invalidate(info.item.boundingRect())
 
     def projectPoints(self, points, point_header):
-        caller = inspect.stack()[1][3]
         pts_out = []
         for point in points[0]:
             pt = PointStamped()
@@ -545,7 +580,7 @@ class Circler(QtGui.QGraphicsView):
 
 
             # self.polygons[req.id] = (poly, QtGui.QColor(req.color.r,req.color.g,req.color.b), req.label, textRect)
-            self.polygons[req.id] = PolygonInfo(poly_item, req.label)
+            self.polygons[req.id] = PolygonInfo(poly_item, req.id, req.label)
             # self.gfx_scene.update(self.polygons[req.id].item.boundingRect())
             self.gfx_scene.invalidate(self.polygons[req.id].item.boundingRect())
 
@@ -588,6 +623,9 @@ class Circler(QtGui.QGraphicsView):
         self.circle_objects   = rospy.get_param('~circle_objects', True)
 
         # self.addKeyHandler(67, QtGui.QApplication.quit)
+
+
+        self.click.connect(self.handleClick)
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
