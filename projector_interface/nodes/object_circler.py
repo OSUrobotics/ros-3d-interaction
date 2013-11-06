@@ -167,6 +167,7 @@ class Circler(QtGui.QGraphicsView):
 
     def resetClick(self, obj):
         obj.item.setPen(self.POLYGON_PEN)
+        obj.item.setZValue(0)
         obj.clicked = False
         self.gfx_scene.invalidate(obj.item.boundingRect())
         self.resetClickedObject()
@@ -189,6 +190,7 @@ class Circler(QtGui.QGraphicsView):
         if (self.active_object.label != '\x00') and (self.clicked_object.label == '\x00'):
             self.clicked_object = self.active_object
             self.clicked_object.item.setPen(self.CLICKED_OBJECT_PEN)
+            self.clicked_object.item.setZValue(1000)
             self.clicked_object.clicked = True
             self.clicked_object_pub.publish(self.clicked_object.uid)
             self.gfx_scene.invalidate(self.clicked_object.item.boundingRect())
@@ -282,11 +284,13 @@ class Circler(QtGui.QGraphicsView):
                         dirty = not info.active 
                         info.active = True
                         info.item.setPen(self.ACTIVE_POLYGON_PEN)
+                        info.item.setZValue(500)
                         self.active_object = info
                     else:
                         dirty = info.active
                         info.active = False
                         info.item.setPen(self.POLYGON_PEN)
+                        info.item.setZValue(0)
                         self.resetClickedObject()
                     if dirty:
                         self.gfx_scene.invalidate(info.item.boundingRect())
