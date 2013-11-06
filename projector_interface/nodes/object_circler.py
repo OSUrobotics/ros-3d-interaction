@@ -96,7 +96,7 @@ class Circler(QtGui.QGraphicsView):
     int_objects = None  
     int_projected_objects = None
     int_ages = []
-    click = rospy.Time(0)
+    # click = rospy.Time(0)
     click_loc = np.float64([-1,-1,-1])
     click_duration = rospy.Duration(1.0)
     
@@ -124,6 +124,7 @@ class Circler(QtGui.QGraphicsView):
     config_inited = False
 
     click = QtCore.Signal()
+    polygonAdded = QtCore.Signal(projector_interface.srv.DrawPolygonRequest)
 
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
@@ -548,6 +549,10 @@ class Circler(QtGui.QGraphicsView):
         return projector_interface.srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
+        self.polygonAdded.emit(req)
+        return projector_interface.srv.DrawPolygonResponse()
+
+    def draw_polygon(self, req):
         with self.polygon_lock:
             # Project the polygon points onto the interface before saving them
             poly = PySide.QtGui.QPolygon()
@@ -587,8 +592,6 @@ class Circler(QtGui.QGraphicsView):
             self.polygons[req.id] = PolygonInfo(poly_item, req.id, req.label)
             # self.gfx_scene.update(self.polygons[req.id].item.boundingRect())
             self.gfx_scene.invalidate(self.polygons[req.id].item.boundingRect())
-
-        return projector_interface.srv.DrawPolygonResponse()
 
     def handle_clear_polygons(self, req):
         with self.polygon_lock:
@@ -630,6 +633,7 @@ class Circler(QtGui.QGraphicsView):
 
 
         self.click.connect(self.handleClick)
+        self.polygonAdded.connect(self.draw_polygon)
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
