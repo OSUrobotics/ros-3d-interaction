@@ -155,6 +155,10 @@ class Circler(QtGui.QGraphicsView):
         self.obj_cursor.setCacheMode(QtGui.QGraphicsItem.CacheMode.NoCache)
         self.last_cursor_rect = self.obj_cursor.boundingRect()
 
+        # add a line for the offscreen cursor hint
+        self.obj_cursor_hint = self.gfx_scene.addLine(0,0,0,0, pen=pen)
+        self.obj_cursor_hint.hide()
+
         self.setScene(self.gfx_scene)
 
         self.addKeyHandler(16777216, self.escHandler)
@@ -245,6 +249,22 @@ class Circler(QtGui.QGraphicsView):
             #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
+    def hideCursor(self):
+        self.obj_cursor.hide()
+        self.gfx_scene.invalidate(self.obj_cursor.boundingRect())
+
+    def showCursor(self):
+        self.obj_cursor.show()
+        self.gfx_scene.invalidate(self.obj_cursor.boundingRect())
+
+    def hideCursorHint(self):
+        self.obj_cursor_hint.hide()
+        self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+
+    def showCursorHint(self):
+        self.obj_cursor_hint.show()
+        self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+
     def update_cursor(self):
         if rospy.is_shutdown():
             QtGui.QApplication.quit()
@@ -256,20 +276,52 @@ class Circler(QtGui.QGraphicsView):
             cursor_x = coords[0]
             cursor_y = coords[1]
 
-            cursor_rect = QtCore.QRectF(
-                cursor_x-CURSOR_RADIUS/2,# + X_OFFSET,
-                cursor_y-CURSOR_RADIUS/2,# + Y_OFFSET,
-                CURSOR_RADIUS,
-                CURSOR_RADIUS
-            )
-            self.obj_cursor.setRect(cursor_rect)
-            # self.gfx_scene.update(cursor_rect)
-            # self.gfx_scene.update(self.last_cursor_rect)
-            self.gfx_scene.invalidate(cursor_rect)
-            self.gfx_scene.invalidate(self.last_cursor_rect)
-            self.last_cursor_rect = self.obj_cursor.boundingRect()
+            # if the cursor is on-screen, draw it
+            if cursor_x > 0 and cursor_y > 0 and cursor_x < self.width() and cursor_y < self.height():
+                self.hideCursorHint()
+                cursor_rect = QtCore.QRectF(
+                    cursor_x-CURSOR_RADIUS/2,# + X_OFFSET,
+                    cursor_y-CURSOR_RADIUS/2,# + Y_OFFSET,
+                    CURSOR_RADIUS,
+                    CURSOR_RADIUS
+                )
+                self.showCursor()
+
+                self.obj_cursor.setRect(cursor_rect)
+                self.gfx_scene.invalidate(cursor_rect)
+                self.gfx_scene.invalidate(self.last_cursor_rect)
+                self.last_cursor_rect = self.obj_cursor.boundingRect()
+            else:
+                self.hideCursor()
+
+                hint_x = cursor_x
+                if cursor_x < 0:
+                    hint_x = 0
+                if cursor_x > self.width():
+                    hint_x = self.width()
+
+                hint_y = cursor_y
+                if cursor_y < 0:
+                    hint_y = 0
+                if cursor_y > self.height():
+                    hint_y = self.height()
+
+                head = np.array([hint_x, hint_y])# + [X_OFFSET, Y_OFFSET]
+                tail_x, tail_y = 0,0
+                if hint_x == 0:
+                    tail_x =  50
+                if hint_x == self.width():
+                    tail_x = -50
+                if hint_y == 0:
+                    tail_y =  50
+                if hint_y == self.height():
+                    tail_y = -50
+                tail = head + [tail_x, tail_y]
+                self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+                self.obj_cursor_hint.setLine(head[0],head[1],tail[0],tail[1])
+                self.showCursorHint()
+
         self.updateIntersectedPolys()
-        self.gfx_scene.invalidate(cursor_rect)
 
 
     # TODO this may need a more efficient implementaion that doesn't look at all polygons
