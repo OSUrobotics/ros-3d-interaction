@@ -96,7 +96,6 @@ class Circler(QtGui.QGraphicsView):
     int_objects = None  
     int_projected_objects = None
     int_ages = []
-    # click = rospy.Time(0)
     click_loc = np.float64([-1,-1,-1])
     click_duration = rospy.Duration(1.0)
     
@@ -125,6 +124,7 @@ class Circler(QtGui.QGraphicsView):
 
     click = QtCore.Signal()
     polygonAdded = QtCore.Signal(projector_interface.srv.DrawPolygonRequest)
+    cursorMoved = QtCore.Signal(PointCloud2)
 
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
@@ -153,11 +153,13 @@ class Circler(QtGui.QGraphicsView):
         cursor_rect = QtCore.QRect(self.width(), self.height(), CURSOR_RADIUS, CURSOR_RADIUS)
         self.obj_cursor = self.gfx_scene.addEllipse(cursor_rect, pen)   
         self.obj_cursor.setCacheMode(QtGui.QGraphicsItem.CacheMode.NoCache)
+        self.obj_cursor.setZValue(2000)
         self.last_cursor_rect = self.obj_cursor.boundingRect()
 
         # add a line for the offscreen cursor hint
         self.obj_cursor_hint = self.gfx_scene.addLine(0,0,0,0, pen=pen)
         self.obj_cursor_hint.hide()
+        self.obj_cursor_hint.setZValue(2000)
 
         self.setScene(self.gfx_scene)
 
@@ -237,17 +239,7 @@ class Circler(QtGui.QGraphicsView):
                 self.int_ages.append(rospy.Time.now())
 
     def cursor_cb(self, msg):
-        if not self.cursor_timer.isActive():
-            self.cursor_timer.start()
-        with self.cursor_lock:
-            objects = read_points_np(msg, masked=False)
-            if objects.shape[1] == 0: return
-            
-            self.cursor_header = msg.header
-            self.cursor_pts = objects
-            transformed_pts = self.projectPoints(self.cursor_pts, msg.header)
-            #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
-            self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
+        self.cursorMoved.emit(msg)
 
     def hideCursor(self):
         self.obj_cursor.hide()
@@ -265,9 +257,17 @@ class Circler(QtGui.QGraphicsView):
         self.obj_cursor_hint.show()
         self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
 
-    def update_cursor(self):
-        if rospy.is_shutdown():
-            QtGui.QApplication.quit()
+    def update_cursor(self, cursor_msg):
+        with self.cursor_lock:
+            objects = read_points_np(cursor_msg, masked=False)
+            if objects.shape[1] == 0: return
+            
+            self.cursor_header = cursor_msg.header
+            self.cursor_pts = objects
+            transformed_pts = self.projectPoints(self.cursor_pts, cursor_msg.header)
+            #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
+            self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
+
 
         with self.cursor_lock:
             ############# Moved from paintEvent #############
@@ -667,6 +667,9 @@ class Circler(QtGui.QGraphicsView):
 
         return config
 
+    def checkShutdownRequest(self):
+        if rospy.is_shutdown(): QtGui.QApplication.quit()
+
     def __init__(self):
         super(Circler, self).__init__()
         self.tfl = tf.TransformListener()
@@ -686,6 +689,7 @@ class Circler(QtGui.QGraphicsView):
 
         self.click.connect(self.handleClick)
         self.polygonAdded.connect(self.draw_polygon)
+        self.cursorMoved.connect(self.update_cursor)
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
@@ -715,9 +719,10 @@ class Circler(QtGui.QGraphicsView):
         reconfig_srv = Server(InterfaceConfig, self.reconfig_cb)
 
 
-        self.cursor_timer = PySide.QtCore.QTimer(self)
-        self.cursor_timer.setInterval(30)
-        self.cursor_timer.timeout.connect(self.update_cursor)
+        self.interrupt_timer = PySide.QtCore.QTimer(self)
+        self.interrupt_timer.setInterval(30)
+        self.interrupt_timer.timeout.connect(self.checkShutdownRequest)
+        self.interrupt_timer.start()
         
         rospy.loginfo('interface started')
         # sys.exit(app.exec_())
