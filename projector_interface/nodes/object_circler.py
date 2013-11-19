@@ -666,7 +666,7 @@ class Circler(QtGui.QGraphicsView):
                 to_hilight.data.showHilight(color)
 
     def clear_hilights(self):
-        for obj in self.circles.inorder(): 
+        for obj in self.circles.inorder():
             obj.data.clearHilight()
 
     def handle_hilight(self, req):
@@ -831,4 +831,6 @@ class Circler(QtGui.QGraphicsView):
 
 if __name__ == '__main__':
     rospy.init_node('object_circler')
-    print 'Window size is %s' % rospy.get_param('~window_size
+    print 'Window size is %s' % rospy.get_param('~window_size', 1)
+    app = PySide.QtGui.QApplication(sys.argv)
+    c = Circler()
