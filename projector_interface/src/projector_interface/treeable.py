@@ -1,5 +1,5 @@
 from PySide.QtCore import QPointF
-from PySide.QtGui import QGraphicsEllipseItem
+from PySide.QtGui import QGraphicsEllipseItem, QPen, QColor
 
 class GraphicsItemInfo(object):
     # __slots__ = ['item', 'uid', 'active', 'label', 'clicked']
@@ -29,9 +29,21 @@ class TreeCircle(QGraphicsEllipseItem):
         super(TreeCircle, self).__init__(rect)
         self.setPen(pen)
         self.point3d = point3d
+        hilightRect = rect.adjusted((pen.width()-1),(pen.width()-1),-(pen.width()-1),-(pen.width()-1))
+        self.hilight = QGraphicsEllipseItem(hilightRect, parent=self)
+        self.hilight.hide()
+
+    def showHilight(self, color):
+        self.hilight.setPen(QPen(color, self.pen().width()))
+        if not self.hilight.isVisible():
+            self.hilight.show()
+
+    def clearHilight(self):
+        if self.hilight.isVisible(): 
+            self.hilight.hide()
 
     def __len__(self):
-        return self.point3d.__len__()
+        return self.point3d.__len__() 
 
     def __getslice__(self, i, j):
         return self.point3d.__getslice__(i, j)

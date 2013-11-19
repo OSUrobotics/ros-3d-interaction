@@ -123,6 +123,8 @@ class Circler(QtGui.QGraphicsView):
     polygonAdded = QtCore.Signal(projector_interface.srv.DrawPolygonRequest)
     cursorMoved = QtCore.Signal(PointCloud2)
     objectsChanged = QtCore.Signal(PointCloud2)
+    objectHighlighted = QtCore.Signal(projector_interface.srv.HilightObject)
+    hilightsCleared = QtCore.Signal()
 
     def keyPressEvent(self, e):
         for key, fn in self.key_handlers.items():
@@ -161,6 +163,8 @@ class Circler(QtGui.QGraphicsView):
         self.obj_cursor_hint.setZValue(2000)
 
         self.setScene(self.gfx_scene)
+
+        self.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing)
 
         self.addKeyHandler(16777216, self.escHandler)
 
@@ -651,14 +655,26 @@ class Circler(QtGui.QGraphicsView):
     #     self.rate_pub.publish()
     #     self.dur_pub.publish(rospy.Time.now() - paint_start)
                  
-    def handle_hilight(self, req):
+    def hilight_object(self, req):
         pt = self.tfl.transformPoint(self.object_header.frame_id, req.object).point
         color = QtGui.QColor(req.color.r,req.color.g,req.color.b)
-        self.hilights.append(([pt.x,pt.y,pt.z], color))
+        if self.circles:
+            pt_arr = [pt.x, pt.y, pt.z]
+            to_hilight = self.circles.search_nn([pt.x, pt.y, pt.z])
+            # np.spacing(1) is equivalent to eps in matlab
+            if to_hilight.dist(pt_arr) < np.spacing(1):
+                to_hilight.data.showHilight(color)
+
+    def clear_hilights(self):
+        for obj in self.circles.inorder(): 
+            obj.data.clearHilight()
+
+    def handle_hilight(self, req):
+        self.objectHighlighted.emit(req)
         return projector_interface.srv.HilightObjectResponse()
         
     def handle_clear_hilight(self, req):
-        self.hilights = []
+        self.hilightsCleared.emit()
         return projector_interface.srv.ClearHilightsResponse()
 
     def handle_get_cursor_stats(self, req):
@@ -772,6 +788,8 @@ class Circler(QtGui.QGraphicsView):
         self.polygonAdded.connect(self.draw_polygon)
         self.cursorMoved.connect(self.update_cursor)
         self.objectsChanged.connect(self.updateObjects)
+        self.objectHighlighted.connect(self.hilight_object)
+        self.hilightsCleared.connect(self.clear_hilights)
 
         rospy.loginfo('Window size = %s', rospy.get_param('~window_size', 10))
         rospy.loginfo('Flip        = %s', self.flip)
@@ -813,6 +831,4 @@ class Circler(QtGui.QGraphicsView):
 
 if __name__ == '__main__':
     rospy.init_node('object_circler')
-    print 'Window size is %s' % rospy.get_param('~window_size', 1)
-    app = PySide.QtGui.QApplication(sys.argv)
-    c = Circler()
+    print 'Window size is %s' % rospy.get_param('~window_size
