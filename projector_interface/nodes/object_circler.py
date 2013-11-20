@@ -28,7 +28,6 @@
 
 import roslib; roslib.load_manifest('projector_interface')
 import rospy
-from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
 from std_msgs.msg import Empty, String as String, Duration
 from geometry_msgs.msg import PointStamped
@@ -46,10 +45,10 @@ from threading import RLock
 import sys
 
 
-import PySide
+# import PySide
 from PySide import QtGui, QtCore
 
-from dynamic_reconfigure.server import Server
+from dynamic_reconfigure.server import Server as DynamicReconfigureServer
 from projector_interface.cfg import InterfaceConfig
 
 import kdtree
@@ -123,7 +122,7 @@ class Circler(QtGui.QGraphicsView):
     def addKeyHandler(self, key, fn):
         self.key_handlers[key] = fn
 
-    def escHandler(self, e):
+    def escHandler(self, _):
         QtGui.QApplication.quit()
 
     def initUI(self):
@@ -229,7 +228,8 @@ class Circler(QtGui.QGraphicsView):
             self.circles = kdtree.create(dimensions=3)
 
             objects = read_points_np(obj_msg, masked=False)
-            if objects.shape[1] == 0: return
+            if objects.shape[1] == 0:
+                return
             
             self.object_header = obj_msg.header
             self.objects = objects
@@ -261,7 +261,8 @@ class Circler(QtGui.QGraphicsView):
     def intersected_cb(self, msg):
         with self.intersected_lock:
             objects = read_points_np(msg, masked=False)
-            if objects.shape[1] == 0: return
+            if objects.shape[1] == 0:
+                return
 
             self.int_objects = objects
             transformed_objects = self.projectPoints(objects, msg.header)
@@ -289,7 +290,8 @@ class Circler(QtGui.QGraphicsView):
     def update_cursor(self, cursor_msg):
         with self.cursor_lock:
             objects = read_points_np(cursor_msg, masked=False)
-            if objects.shape[1] == 0: return
+            if objects.shape[1] == 0:
+                return
             
             self.cursor_header = cursor_msg.header
             self.cursor_pts = objects
@@ -339,7 +341,7 @@ class Circler(QtGui.QGraphicsView):
                     hint_y = self.height()
 
                 head = np.array([hint_x, hint_y])# + [X_OFFSET, Y_OFFSET]
-                tail_x, tail_y = 0,0
+                tail_x, tail_y = 0, 0
                 if hint_x == 0:
                     tail_x =  50
                 if hint_x == self.width():
@@ -350,7 +352,7 @@ class Circler(QtGui.QGraphicsView):
                     tail_y = -50
                 tail = head + [tail_x, tail_y]
                 self.scene().invalidate(self.obj_cursor_hint.boundingRect())
-                self.obj_cursor_hint.setLine(head[0],head[1],tail[0],tail[1])
+                self.obj_cursor_hint.setLine(head[0], head[1], tail[0], tail[1])
                 self.showCursorHint()
 
         self.updateIntersectedPolys()
@@ -457,11 +459,11 @@ class Circler(QtGui.QGraphicsView):
         self.objectHighlighted.emit(req)
         return projector_interface.srv.HilightObjectResponse()
         
-    def handle_clear_hilight(self, req):
+    def handle_clear_hilight(self, _):
         self.hilightsCleared.emit()
         return projector_interface.srv.ClearHilightsResponse()
 
-    def handle_get_cursor_stats(self, req):
+    def handle_get_cursor_stats(self, _):
         while not (rospy.Time.now() - self.click) < self.click_duration:
             rospy.sleep(0.05)
         with self.cursor_lock:
@@ -488,14 +490,14 @@ class Circler(QtGui.QGraphicsView):
     def draw_polygon(self, req):
         with self.polygon_lock:
             # Project the polygon points onto the interface before saving them
-            poly = PySide.QtGui.QPolygon()
+            poly = QtGui.QPolygon()
             pts_arr = np.array([[(p.x,p.y,p.z) for p in req.polygon.polygon.points]])
             points = self.projectPoints(pts_arr, req.polygon.header)
             points = cv2.perspectiveTransform(points, self.H)
             if self.flip:
                 points[0] = ([self.height(), self.width()] - points[0])
             for point in points[0]:
-                poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+                poly.push_back(QtCore.QPoint(point[1], point[0]))
 
             poly_item = self.scene().addPolygon(poly, pen=self.POLYGON_PEN)
 
@@ -509,13 +511,14 @@ class Circler(QtGui.QGraphicsView):
                 text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
                 if self.flip:
                     text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
-                text_poly = PySide.QtGui.QPolygon()
-                for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
+                text_poly = QtGui.QPolygon()
+                for point in text_rect_points[0]:
+                    text_poly.push_back(QtCore.QPoint(point[1], point[0]))
                 textRect = text_poly.boundingRect()
 
                 if req.label:
                     font = QtGui.QFont('Decorative', 30)
-                    text_item = PySide.QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.scene())
+                    text_item = QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.scene())
                     text_item.setFont(font)
                     text_item.setBrush(QtGui.QBrush(Colors.WHITE))
                     text_item.setPos(textRect.topLeft())
@@ -531,8 +534,7 @@ class Circler(QtGui.QGraphicsView):
                 self.scene().invalidate(poly.item.boundingRect())
             self.polygons.clear()
 
-
-    def handle_clear_polygons(self, req):
+    def handle_clear_polygons(self, _):
         self.polygonsCleared.emit()
         return projector_interface.srv.ClearPolygonsResponse()
 
@@ -549,7 +551,8 @@ class Circler(QtGui.QGraphicsView):
         return config
 
     def checkShutdownRequest(self):
-        if rospy.is_shutdown(): QtGui.QApplication.quit()
+        if rospy.is_shutdown():
+            QtGui.QApplication.quit()
 
     def __init__(self):
         super(Circler, self).__init__()
@@ -600,10 +603,10 @@ class Circler(QtGui.QGraphicsView):
 
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
-        reconfig_srv = Server(InterfaceConfig, self.reconfig_cb)
+        DynamicReconfigureServer(InterfaceConfig, self.reconfig_cb)
 
 
-        self.interrupt_timer = PySide.QtCore.QTimer(self)
+        self.interrupt_timer = QtCore.QTimer(self)
         self.interrupt_timer.setInterval(30)
         self.interrupt_timer.timeout.connect(self.checkShutdownRequest)
         self.interrupt_timer.start()
@@ -615,5 +618,5 @@ class Circler(QtGui.QGraphicsView):
 if __name__ == '__main__':
     rospy.init_node('object_circler')
     print 'Window size is %s' % rospy.get_param('~window_size', 1)
-    app = PySide.QtGui.QApplication(sys.argv)
-    c = Circler(
+    app = QtGui.QApplication(sys.argv)
+    c = Circler()
