@@ -35,7 +35,7 @@ import image_geometry
 from projector_interface._point_cloud import read_points_np
 from projector_interface.treeable import TreeCircleInfo, GraphicsItemInfo
 from pr2_python.pointclouds import xyz_array_to_pointcloud2
-import projector_interface.srv
+from projector_interface import srv
 import tf
 
 import cv2
@@ -107,11 +107,11 @@ class Circler(QtGui.QGraphicsView):
     config_inited = False
 
     click = QtCore.Signal()
-    polygonAdded = QtCore.Signal(projector_interface.srv.DrawPolygonRequest)
+    polygonAdded = QtCore.Signal(srv.DrawPolygonRequest)
     polygonsCleared = QtCore.Signal()
     cursorMoved = QtCore.Signal(PointCloud2)
     objectsChanged = QtCore.Signal(PointCloud2)
-    objectHighlighted = QtCore.Signal(projector_interface.srv.HilightObject)
+    objectHighlighted = QtCore.Signal(srv.HilightObject)
     hilightsCleared = QtCore.Signal()
 
     def keyPressEvent(self, e):
@@ -193,7 +193,10 @@ class Circler(QtGui.QGraphicsView):
             self.clicked_object.clicked = True
             self.clicked_object_pub.publish(self.clicked_object.uid)
             self.scene().invalidate(self.clicked_object.item.boundingRect())
-            QtCore.QTimer.singleShot(1000*self.click_duration.to_sec(), partial(self.resetClick, self.clicked_object))
+            QtCore.QTimer.singleShot(
+                1000*self.click_duration.to_sec(),
+                partial(self.resetClick, self.clicked_object)
+            )
 
         if self.active_object.active:
             self.clicked_object = self.active_object
@@ -202,9 +205,10 @@ class Circler(QtGui.QGraphicsView):
             self.clicked_object.clicked = True
             self.clicked_object_pub.publish(self.clicked_object.uid)
             self.scene().invalidate(self.clicked_object.item.boundingRect())
-            QtCore.QTimer.singleShot(1000*self.click_duration.to_sec(), partial(self.resetClick, self.clicked_object))
-
-
+            QtCore.QTimer.singleShot(
+                1000*self.click_duration.to_sec(),
+                partial(self.resetClick, self.clicked_object)
+            )
 
     def click_cb(self, msg):
         self.click_stale = False
@@ -306,7 +310,9 @@ class Circler(QtGui.QGraphicsView):
             cursor_y = coords[1]
 
             # if the cursor is on-screen, draw it
-            if cursor_x > 0 and cursor_y > 0 and cursor_x < self.width() and cursor_y < self.height():
+            if    cursor_x > 0 and cursor_y > 0 \
+              and cursor_x < self.width()       \
+              and cursor_y < self.height():
 
                 if self.obj_cursor_hint.isVisible():
                     self.hideCursorHint()
@@ -457,11 +463,11 @@ class Circler(QtGui.QGraphicsView):
 
     def handle_hilight(self, req):
         self.objectHighlighted.emit(req)
-        return projector_interface.srv.HilightObjectResponse()
+        return srv.HilightObjectResponse()
         
     def handle_clear_hilight(self, _):
         self.hilightsCleared.emit()
-        return projector_interface.srv.ClearHilightsResponse()
+        return srv.ClearHilightsResponse()
 
     def handle_get_cursor_stats(self, _):
         while not (rospy.Time.now() - self.click) < self.click_duration:
@@ -474,24 +480,24 @@ class Circler(QtGui.QGraphicsView):
             pt_msg = PointStamped()
             pt_msg.header = msg.header
             pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.click_loc
-            return projector_interface.srv.GetCursorStatsResponse(msg, pt_msg)
+            return srv.GetCursorStatsResponse(msg, pt_msg)
         
     def set_selection_method(self, req):
         if req.method == req.THRESH:
             self.use_selected_thresh = True
         elif req.method == req.CLOSEST:
             self.use_selected_thresh = False
-        return projector_interface.srv.SetSelectionMethodResponse()
+        return srv.SetSelectionMethodResponse()
 
     def handle_draw_polygon(self, req):
         self.polygonAdded.emit(req)
-        return projector_interface.srv.DrawPolygonResponse()
+        return srv.DrawPolygonResponse()
 
     def draw_polygon(self, req):
         with self.polygon_lock:
             # Project the polygon points onto the interface before saving them
             poly = QtGui.QPolygon()
-            pts_arr = np.array([[(p.x,p.y,p.z) for p in req.polygon.polygon.points]])
+            pts_arr = np.array([[(p.x, p.y, p.z) for p in req.polygon.polygon.points]])
             points = self.projectPoints(pts_arr, req.polygon.header)
             points = cv2.perspectiveTransform(points, self.H)
             if self.flip:
@@ -518,7 +524,10 @@ class Circler(QtGui.QGraphicsView):
 
                 if req.label:
                     font = QtGui.QFont('Decorative', 30)
-                    text_item = QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.scene())
+                    text_item = QtGui.QGraphicsSimpleTextItem(
+                        req.label, parent=poly_item,
+                        scene=self.scene()
+                    )
                     text_item.setFont(font)
                     text_item.setBrush(QtGui.QBrush(Colors.WHITE))
                     text_item.setPos(textRect.topLeft())
@@ -536,7 +545,7 @@ class Circler(QtGui.QGraphicsView):
 
     def handle_clear_polygons(self, _):
         self.polygonsCleared.emit()
-        return projector_interface.srv.ClearPolygonsResponse()
+        return srv.ClearPolygonsResponse()
 
     def reconfig_cb(self, config, level):
         # ignore the first config we get
@@ -590,12 +599,12 @@ class Circler(QtGui.QGraphicsView):
         rospy.Subscriber('intersected_points', PointCloud2, self.intersected_cb, queue_size=1)
         rospy.Subscriber('intersected_points_cursor', PointCloud2, self.cursor_cb)
         self.info_sub = rospy.Subscriber('camera_info', CameraInfo, self.info_cb)
-        rospy.Service('hilight_object', projector_interface.srv.HilightObject, self.handle_hilight)
-        rospy.Service('clear_hilights', projector_interface.srv.ClearHilights, self.handle_clear_hilight)
-        rospy.Service('get_cursor_stats', projector_interface.srv.GetCursorStats, self.handle_get_cursor_stats)
-        rospy.Service('set_selection_method', projector_interface.srv.SetSelectionMethod, self.set_selection_method)
-        rospy.Service('draw_polygon', projector_interface.srv.DrawPolygon, self.handle_draw_polygon)
-        rospy.Service('clear_polygons', projector_interface.srv.ClearPolygons, self.handle_clear_polygons)
+        rospy.Service('hilight_object', srv.HilightObject, self.handle_hilight)
+        rospy.Service('clear_hilights', srv.ClearHilights, self.handle_clear_hilight)
+        rospy.Service('get_cursor_stats', srv.GetCursorStats, self.handle_get_cursor_stats)
+        rospy.Service('set_selection_method', srv.SetSelectionMethod, self.set_selection_method)
+        rospy.Service('draw_polygon', srv.DrawPolygon, self.handle_draw_polygon)
+        rospy.Service('clear_polygons', srv.ClearPolygons, self.handle_clear_polygons)
         self.selected_pub = rospy.Publisher('selected_point', PointStamped)
 
         self.rate_pub = rospy.Publisher('rate', Empty)
