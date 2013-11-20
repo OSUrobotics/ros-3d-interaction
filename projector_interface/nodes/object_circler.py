@@ -100,7 +100,6 @@ class Circler(QtGui.QGraphicsView):
     cursor_lock = RLock()
     polygon_lock = RLock()
     
-    hilights = []
     polygons = dict()
 
     key_handlers = dict()
@@ -110,6 +109,7 @@ class Circler(QtGui.QGraphicsView):
 
     click = QtCore.Signal()
     polygonAdded = QtCore.Signal(projector_interface.srv.DrawPolygonRequest)
+    polygonsCleared = QtCore.Signal()
     cursorMoved = QtCore.Signal(PointCloud2)
     objectsChanged = QtCore.Signal(PointCloud2)
     objectHighlighted = QtCore.Signal(projector_interface.srv.HilightObject)
@@ -524,13 +524,16 @@ class Circler(QtGui.QGraphicsView):
             self.polygons[req.id] = GraphicsItemInfo(poly_item, req.id, req.label)
             self.scene().invalidate(self.polygons[req.id].item.boundingRect())
 
-    def handle_clear_polygons(self, req):
+    def clear_polygons(self):
         with self.polygon_lock:
             for poly in self.polygons.values():
                 self.scene().removeItem(poly.item)
                 self.scene().invalidate(poly.item.boundingRect())
             self.polygons.clear()
-            self.hilights = []
+
+
+    def handle_clear_polygons(self, req):
+        self.polygonsCleared.emit()
         return projector_interface.srv.ClearPolygonsResponse()
 
     def reconfig_cb(self, config, level):
@@ -566,6 +569,7 @@ class Circler(QtGui.QGraphicsView):
 
         self.click.connect(self.handleClick)
         self.polygonAdded.connect(self.draw_polygon)
+        self.polygonsCleared.connect(self.clear_polygons)
         self.cursorMoved.connect(self.update_cursor)
         self.objectsChanged.connect(self.updateObjects)
         self.objectHighlighted.connect(self.hilight_object)
@@ -612,4 +616,4 @@ if __name__ == '__main__':
     rospy.init_node('object_circler')
     print 'Window size is %s' % rospy.get_param('~window_size', 1)
     app = PySide.QtGui.QApplication(sys.argv)
-    c = Circler()
+    c = Circler(
