@@ -27,7 +27,6 @@
 # Author Dan Lazewatsky/lazewatd@engr.orst.edu
 
 import roslib; roslib.load_manifest('projector_interface')
-from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import CameraInfo, PointCloud2
@@ -44,14 +43,11 @@ import cv2
 import numpy as np
 from collections import deque
 from threading import RLock
-import sys, signal
+import sys
 
-from matplotlib.nxutils import pnpoly
 
 import PySide
 from PySide import QtGui, QtCore
-from PySide.QtGui import QPalette
-from PySide import QtOpenGL
 
 from dynamic_reconfigure.server import Server
 from projector_interface.cfg import InterfaceConfig
@@ -66,22 +62,16 @@ from functools import partial
 X_OFFSET = 0
 Y_OFFSET = 0
 
-CLICK_RESET = np.float64([[-1,-1,-1]])
-
-CURSOR_OFFSET = np.array([0,25])
 CURSOR_RADIUS = 10
 
-SELECT_DIST_THRESH = 75 #ugh, this is in pixels
 SAME_OBJ_THRESH    = 0.03
 
 class Colors:
-    WHITE = QtGui.QColor(255,255,255)
-    GREEN = QtGui.QColor(  0,255,0  )
-    BLUE  = QtGui.QColor(  0,135,189)
+    WHITE = QtGui.QColor(255, 255, 255)
+    GREEN = QtGui.QColor(  0, 255, 0  )
+    BLUE  = QtGui.QColor(  0, 135, 189)
 
-# class Circler(QtGui.QWidget):
 class Circler(QtGui.QGraphicsView):
-#class Circler(QtOpenGL.QGLWidget):
     H = None
     POLYGON_PEN = QtGui.QPen(Colors.WHITE, 5)
     ACTIVE_POLYGON_PEN = QtGui.QPen(Colors.GREEN, 5)
@@ -92,8 +82,7 @@ class Circler(QtGui.QGraphicsView):
     projected_objects = None
     int_objects = None  
     int_projected_objects = None
-    int_ages = []
-    click_loc = np.float64([-1,-1,-1])
+    click_loc = np.float64([-1, -1, -1])
     click_duration = rospy.Duration(1.0)
     
     selected_pt = np.array([])
@@ -134,35 +123,33 @@ class Circler(QtGui.QGraphicsView):
     def addKeyHandler(self, key, fn):
         self.key_handlers[key] = fn
 
-
     def escHandler(self, e):
-        # sys.exit(0)
         QtGui.QApplication.quit()
 
     def initUI(self):
         self.resetClickedObject()
         self.resetActiveObject()
         self.active_poly   = GraphicsItemInfo(QtGui.QGraphicsPolygonItem(), -1, label='\x00')
-        self.active_object = TreeCircleInfo(QtCore.QRect(), self.POLYGON_PEN, (0,0,0))
-        self.gfx_scene = QtGui.QGraphicsScene() 
-        self.gfx_scene.setBackgroundBrush(QtGui.QColor(0, 0, 0))
+        self.active_object = TreeCircleInfo(QtCore.QRect(), self.POLYGON_PEN, (0, 0, 0))
+        gfx_scene = QtGui.QGraphicsScene() 
+        gfx_scene.setBackgroundBrush(QtGui.QColor(0, 0, 0))
 
         # setup the cursor pen
         pen = QtGui.QPen(Colors.BLUE, 5)
 
         # add an ellipse to the scene
         cursor_rect = QtCore.QRect(self.width(), self.height(), CURSOR_RADIUS, CURSOR_RADIUS)
-        self.obj_cursor = self.gfx_scene.addEllipse(cursor_rect, pen)   
+        self.obj_cursor = gfx_scene.addEllipse(cursor_rect, pen)   
         self.obj_cursor.setCacheMode(QtGui.QGraphicsItem.CacheMode.NoCache)
         self.obj_cursor.setZValue(2000)
         self.last_cursor_rect = self.obj_cursor.boundingRect()
 
         # add a line for the offscreen cursor hint
-        self.obj_cursor_hint = self.gfx_scene.addLine(0,0,0,0, pen=pen)
+        self.obj_cursor_hint = gfx_scene.addLine(0, 0, 0, 0, pen=pen)
         self.obj_cursor_hint.hide()
         self.obj_cursor_hint.setZValue(2000)
 
-        self.setScene(self.gfx_scene)
+        self.setScene(gfx_scene)
 
         self.setRenderHints(QtGui.QPainter.RenderHint.Antialiasing)
 
@@ -173,7 +160,7 @@ class Circler(QtGui.QGraphicsView):
         # Manually set the scene rect to prevent the view
         # from scrolling to fit off-screen objects
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        self.setSceneRect(0,0,self.width(),self.height())
+        self.setSceneRect(0, 0, self.width(), self.height())
 
         # self.circles = []
         self.circles = kdtree.create(dimensions=3)
@@ -182,7 +169,7 @@ class Circler(QtGui.QGraphicsView):
         obj.item.setPen(self.POLYGON_PEN)
         obj.item.setZValue(0)
         obj.clicked = False
-        self.gfx_scene.invalidate(obj.item.boundingRect())
+        self.scene().invalidate(obj.item.boundingRect())
         self.resetClickedObject()
 
     def resetClickedObject(self):
@@ -206,7 +193,7 @@ class Circler(QtGui.QGraphicsView):
             self.clicked_object.item.setZValue(1000)
             self.clicked_object.clicked = True
             self.clicked_object_pub.publish(self.clicked_object.uid)
-            self.gfx_scene.invalidate(self.clicked_object.item.boundingRect())
+            self.scene().invalidate(self.clicked_object.item.boundingRect())
             QtCore.QTimer.singleShot(1000*self.click_duration.to_sec(), partial(self.resetClick, self.clicked_object))
 
         if self.active_object.active:
@@ -215,7 +202,7 @@ class Circler(QtGui.QGraphicsView):
             self.clicked_object.item.setZValue(1000)
             self.clicked_object.clicked = True
             self.clicked_object_pub.publish(self.clicked_object.uid)
-            self.gfx_scene.invalidate(self.clicked_object.item.boundingRect())
+            self.scene().invalidate(self.clicked_object.item.boundingRect())
             QtCore.QTimer.singleShot(1000*self.click_duration.to_sec(), partial(self.resetClick, self.clicked_object))
 
 
@@ -237,8 +224,8 @@ class Circler(QtGui.QGraphicsView):
     def updateObjects(self, obj_msg):
         with self.object_lock:
             for obj in self.circles.inorder():
-                self.gfx_scene.removeItem(obj.data)
-                self.gfx_scene.invalidate(obj.data.boundingRect())
+                self.scene().removeItem(obj.data)
+                self.scene().invalidate(obj.data.boundingRect())
             self.circles = kdtree.create(dimensions=3)
 
             objects = read_points_np(obj_msg, masked=False)
@@ -262,11 +249,11 @@ class Circler(QtGui.QGraphicsView):
                     nearest = self.circles.search_nn(circle)
                     if np.sqrt(nearest.dist(circle)) > SAME_OBJ_THRESH:                    
                         self.circles.add(circle)
-                        self.gfx_scene.addItem(circle)
-                        self.gfx_scene.invalidate(rect)
+                        self.scene().addItem(circle)
+                        self.scene().invalidate(rect)
                 self.circles.add(circle)
-                self.gfx_scene.addItem(circle)
-                self.gfx_scene.invalidate(rect)
+                self.scene().addItem(circle)
+                self.scene().invalidate(rect)
 
 
 
@@ -276,31 +263,28 @@ class Circler(QtGui.QGraphicsView):
             objects = read_points_np(msg, masked=False)
             if objects.shape[1] == 0: return
 
-            self.int_object_header = msg.header
             self.int_objects = objects
             transformed_objects = self.projectPoints(objects, msg.header)
             self.int_projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
-            for pt in transformed_objects[0]:
-                self.int_ages.append(rospy.Time.now())
 
     def cursor_cb(self, msg):
         self.cursorMoved.emit(msg)
 
     def hideCursor(self):
         self.obj_cursor.hide()
-        self.gfx_scene.invalidate(self.obj_cursor.boundingRect())
+        self.scene().invalidate(self.obj_cursor.boundingRect())
 
     def showCursor(self):
         self.obj_cursor.show()
-        self.gfx_scene.invalidate(self.obj_cursor.boundingRect())
+        self.scene().invalidate(self.obj_cursor.boundingRect())
 
     def hideCursorHint(self):
         self.obj_cursor_hint.hide()
-        self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+        self.scene().invalidate(self.obj_cursor_hint.boundingRect())
 
     def showCursorHint(self):
         self.obj_cursor_hint.show()
-        self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+        self.scene().invalidate(self.obj_cursor_hint.boundingRect())
 
     def update_cursor(self, cursor_msg):
         with self.cursor_lock:
@@ -310,12 +294,10 @@ class Circler(QtGui.QGraphicsView):
             self.cursor_header = cursor_msg.header
             self.cursor_pts = objects
             transformed_pts = self.projectPoints(self.cursor_pts, cursor_msg.header)
-            #self.cursor_pts_xyz.extend(self.cursor_pts.tolist()[0])
             self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
 
         with self.cursor_lock:
-            ############# Moved from paintEvent #############
             xformed = np.median(self.projected_cursor, 0)
             coords = self.maybe_flip((xformed[1], xformed[0]))
             cursor_x = coords[0]
@@ -336,8 +318,8 @@ class Circler(QtGui.QGraphicsView):
                 self.showCursor()
 
                 self.obj_cursor.setRect(cursor_rect)
-                self.gfx_scene.invalidate(cursor_rect)
-                self.gfx_scene.invalidate(self.last_cursor_rect)
+                self.scene().invalidate(cursor_rect)
+                self.scene().invalidate(self.last_cursor_rect)
                 self.last_cursor_rect = self.obj_cursor.boundingRect()
             # otherwise, draw a hint
             else:
@@ -367,7 +349,7 @@ class Circler(QtGui.QGraphicsView):
                 if hint_y == self.height():
                     tail_y = -50
                 tail = head + [tail_x, tail_y]
-                self.gfx_scene.invalidate(self.obj_cursor_hint.boundingRect())
+                self.scene().invalidate(self.obj_cursor_hint.boundingRect())
                 self.obj_cursor_hint.setLine(head[0],head[1],tail[0],tail[1])
                 self.showCursorHint()
 
@@ -397,7 +379,7 @@ class Circler(QtGui.QGraphicsView):
                         info.item.setZValue(0)
                         self.resetClickedObject()
                     if dirty:
-                        self.gfx_scene.invalidate(info.item.boundingRect())
+                        self.scene().invalidate(info.item.boundingRect())
 
     def updateIntersectedCircles(self):
         if self.circles:
@@ -406,14 +388,13 @@ class Circler(QtGui.QGraphicsView):
                 self.active_object.active = False
                 self.active_object.item.setPen(self.POLYGON_PEN)
 
-            self.gfx_scene.invalidate(self.active_object.item.boundingRect())
+            self.scene().invalidate(self.active_object.item.boundingRect())
             self.resetActiveObject()
             with self.object_lock:
                 with self.cursor_lock:
                     cursor_center = self.last_cursor_rect.center()
                     cursor_center_3d = np.median(self.cursor_pts, 0).flatten().tolist()
                     nearest = self.circles.search_nn(cursor_center_3d)
-                    closest = nearest
 
                     # if we're requiring that the cursor be within the halo, do that check
                     if self.use_selected_thresh:
@@ -429,7 +410,7 @@ class Circler(QtGui.QGraphicsView):
                         item.setZValue(500)
                         self.active_object = item # TODO is this right?
                     if dirty:
-                        self.gfx_scene.invalidate(item.boundingRect())
+                        self.scene().invalidate(item.boundingRect())
 
 
     def projectPoints(self, points, point_header):
@@ -452,33 +433,7 @@ class Circler(QtGui.QGraphicsView):
             px = self.model.project3dToPixel((pt_out.x, pt_out.y, pt_out.z))
             pts_out.append(px)
         return np.array([pts_out])
-    
-    def isSelected(self, pt):
-        with self.intersected_lock:
-            if self.int_objects is not None and self.int_projected_objects is not None:
-                for xformed in self.int_projected_objects[0]:
-                    if np.sqrt(((pt-xformed)**2).sum()) < SELECT_DIST_THRESH: return True
-        return False
-            
-    def isHilighted(self, pt):
-        with self.intersected_lock:
-            for hi in self.hilights:
-                if self.sameObject(pt, hi[0]): return True
-        return False
         
-    def getHilightColor(self, pt):
-        with self.intersected_lock:
-            for hi in self.hilights:
-                if self.sameObject(pt, hi[0]):
-                    return hi[1]
-    
-    def dist(self, p1, p2):
-        p1 = np.array(p1)
-        return np.sum(np.sqrt((p1-p2)**2))
-    
-    def sameObject(self, p1, p2):
-        return self.dist(p1,p2) < SAME_OBJ_THRESH
-    
     def maybe_flip(self, coords):
         if self.flip:
             return self.width() - coords[0], self.height() - coords[1]
@@ -486,7 +441,7 @@ class Circler(QtGui.QGraphicsView):
                  
     def hilight_object(self, req):
         pt = self.tfl.transformPoint(self.object_header.frame_id, req.object).point
-        color = QtGui.QColor(req.color.r,req.color.g,req.color.b)
+        color = QtGui.QColor(req.color.r, req.color.g, req.color.b)
         if self.circles:
             pt_arr = [pt.x, pt.y, pt.z]
             to_hilight = self.circles.search_nn([pt.x, pt.y, pt.z])
@@ -542,35 +497,38 @@ class Circler(QtGui.QGraphicsView):
             for point in points[0]:
                 poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
 
-            poly_item = self.gfx_scene.addPolygon(poly, pen=self.POLYGON_PEN)
+            poly_item = self.scene().addPolygon(poly, pen=self.POLYGON_PEN)
 
             textRect = poly.boundingRect()
             # Project the text rect points onto the interface
             if len(req.text_rect.points) > 0:
-                text_rect_points = self.projectPoints(np.array([[(p.x,p.y,p.z) for p in req.text_rect.points]]), req.polygon.header)
+                text_rect_points = self.projectPoints(
+                    np.array([[(p.x,p.y,p.z) for p in req.text_rect.points]]),
+                    req.polygon.header
+                )
                 text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
                 if self.flip:
-                   text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
+                    text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
                 text_poly = PySide.QtGui.QPolygon()
                 for point in text_rect_points[0]: text_poly.push_back(PySide.QtCore.QPoint(point[1], point[0]))
                 textRect = text_poly.boundingRect()
 
                 if req.label:
                     font = QtGui.QFont('Decorative', 30)
-                    text_item = PySide.QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.gfx_scene)
+                    text_item = PySide.QtGui.QGraphicsSimpleTextItem(req.label, parent=poly_item, scene=self.scene())
                     text_item.setFont(font)
                     text_item.setBrush(QtGui.QBrush(Colors.WHITE))
                     text_item.setPos(textRect.topLeft())
 
 
             self.polygons[req.id] = GraphicsItemInfo(poly_item, req.id, req.label)
-            self.gfx_scene.invalidate(self.polygons[req.id].item.boundingRect())
+            self.scene().invalidate(self.polygons[req.id].item.boundingRect())
 
     def handle_clear_polygons(self, req):
         with self.polygon_lock:
             for poly in self.polygons.values():
-                self.gfx_scene.removeItem(poly.item)
-                self.gfx_scene.invalidate(poly.item.boundingRect())
+                self.scene().removeItem(poly.item)
+                self.scene().invalidate(poly.item.boundingRect())
             self.polygons.clear()
             self.hilights = []
         return projector_interface.srv.ClearPolygonsResponse()
@@ -597,7 +555,7 @@ class Circler(QtGui.QGraphicsView):
         rospy.loginfo('waiting for homography...')
         while (not rospy.has_param('/homography')) and (not rospy.is_shutdown()):
             r.sleep()
-        self.H = np.float64(rospy.get_param('/homography')).reshape(3,3)
+        self.H = np.float64(rospy.get_param('/homography')).reshape(3, 3)
         self.flip = rospy.get_param('~flip', default=False)
 
         self.projected_cursor = deque([], rospy.get_param('~window_size', 10))
