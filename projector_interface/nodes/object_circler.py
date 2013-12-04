@@ -539,8 +539,9 @@ class Circler(QtGui.QGraphicsView):
     def clear_polygons(self):
         with self.polygon_lock:
             for poly in self.polygons.values():
-                self.scene().removeItem(poly.item)
-                self.scene().invalidate(poly.item.boundingRect())
+                self.scene().removeItem(poly.item) 
+                QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.boundingRect()))
+                QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.childrenBoundingRect()))
             self.polygons.clear()
 
     def handle_clear_polygons(self, _):
