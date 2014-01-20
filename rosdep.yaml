@@ -2,3 +2,6 @@ pyside:
     ubuntu: python-pyside.qtcore python-pyside.qtgui libpyside-dev
 pil:
     ubuntu: python-imaging
+python-kdtree:
+    ubuntu:
+        pip: kdtree

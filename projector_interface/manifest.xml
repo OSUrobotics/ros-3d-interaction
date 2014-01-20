@@ -24,6 +24,7 @@
   <rosdep name="python-scipy"/>
   <rosdep name="python-qt-bindings"/>
   <rosdep name="python-imaging"/>
+  <rosdep name="python-kdtree"/>
 </package>
 
 
