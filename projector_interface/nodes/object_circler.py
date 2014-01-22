@@ -132,6 +132,7 @@ class Circler(QtGui.QGraphicsView):
         self.active_object = TreeCircleInfo(QtCore.QRect(), self.POLYGON_PEN, (0, 0, 0))
         gfx_scene = QtGui.QGraphicsScene() 
         gfx_scene.setBackgroundBrush(QtGui.QColor(0, 0, 0))
+        self.last_click_time = rospy.Time(0)
 
         # setup the cursor pen
         pen = QtGui.QPen(Colors.BLUE, 5)
@@ -161,7 +162,6 @@ class Circler(QtGui.QGraphicsView):
         self.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         self.setSceneRect(0, 0, self.width(), self.height())
 
-        # self.circles = []
         self.circles = kdtree.create(dimensions=3)
 
     def resetClick(self, obj):
@@ -186,6 +186,9 @@ class Circler(QtGui.QGraphicsView):
 
     def handleClick(self):
         # Make sure the click was on an object, and that nothing is already clicked
+        self.last_click_time = rospy.Time.now()
+
+        # Polygons
         if (self.active_poly.label != '\x00') and (self.clicked_object.label == '\x00'):
             self.clicked_object = self.active_poly
             self.clicked_object.item.setPen(self.CLICKED_OBJECT_PEN)
@@ -198,6 +201,7 @@ class Circler(QtGui.QGraphicsView):
                 partial(self.resetClick, self.clicked_object)
             )
 
+        # Circles
         if self.active_object.active:
             self.clicked_object = self.active_object
             self.clicked_object.item.setPen(self.CLICKED_OBJECT_PEN)
@@ -239,7 +243,6 @@ class Circler(QtGui.QGraphicsView):
             self.objects = objects
             transformed_objects = self.projectPoints(self.objects, obj_msg.header)
             self.projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
-
             for pt, xformed in zip(self.objects[0], self.projected_objects[0]):
                 coords = self.maybe_flip((xformed[1], xformed[0]))
                 rect = QtCore.QRectF(
@@ -255,13 +258,11 @@ class Circler(QtGui.QGraphicsView):
                         self.circles.add(circle)
                         self.scene().addItem(circle)
                         self.scene().invalidate(rect)
-                self.circles.add(circle)
-                self.scene().addItem(circle)
-                self.scene().invalidate(rect)
+                else:
+                    self.circles.add(circle)
+                    self.scene().addItem(circle)
+                    self.scene().invalidate(rect)
 
-
-
-        
     def intersected_cb(self, msg):
         with self.intersected_lock:
             objects = read_points_np(msg, masked=False)
@@ -470,7 +471,8 @@ class Circler(QtGui.QGraphicsView):
         return srv.ClearHilightsResponse()
 
     def handle_get_cursor_stats(self, _):
-        while not (rospy.Time.now() - self.click) < self.click_duration:
+        # wait until the click expires
+        while not (rospy.Time.now() - self.last_click_time) < self.click_duration:
             rospy.sleep(0.05)
         with self.cursor_lock:
             msg = xyz_array_to_pointcloud2(np.array([list(p) + [0] for p in self.projected_cursor]))
@@ -479,7 +481,7 @@ class Circler(QtGui.QGraphicsView):
             
             pt_msg = PointStamped()
             pt_msg.header = msg.header
-            pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.click_loc
+            pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.clicked_object.point3d
             return srv.GetCursorStatsResponse(msg, pt_msg)
         
     def set_selection_method(self, req):
@@ -614,7 +616,6 @@ class Circler(QtGui.QGraphicsView):
         self.click_stats_pub = rospy.Publisher('click_stats', PointCloud2)
         self.clicked_object_pub = rospy.Publisher('clicked_object', String)
         DynamicReconfigureServer(InterfaceConfig, self.reconfig_cb)
-
 
         self.interrupt_timer = QtCore.QTimer(self)
         self.interrupt_timer.setInterval(30)
