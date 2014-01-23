@@ -1,0 +1,7 @@
+<!-- THIS IS A SAMPLE. GENERATE A NEW ONE WITH CONFIGURE_SCREEN.PY. -->
+<launch>
+  <param name="/screen/frame" value="bottom_left"/>
+  <node args="-0.131890780649 0.0384333302687 0.546503453117 0.98313293171 -0.0647204793938 0.138849747391 0.0999081867703 bottom_left_s projector_cam_rgb_optical_frame 100" name="projector_cam_rgb_optical_frame_to_bottom_left" pkg="tf" type="static_transform_publisher"/>
+  <param name="/screen/width" type="double" value="0.388297534826"/>
+  <param name="/screen/height" type="double" value="0.210314507538"/>
+</launch>

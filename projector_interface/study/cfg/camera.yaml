@@ -1,0 +1,20 @@
+image_width: 640
+image_height: 480
+camera_name: projector_cam 
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [523.482317, 0, 348.457538, 0, 522.691583, 245.574894, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.100766, -0.197567, 0.010402, 0.020662, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [0.997286, 0.00049, 0.073626, 0.000237, 0.999951, -0.009862, -0.073627, 0.009853, 0.997237]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [562.446125, 0, 306.479996, 520.877465, 0, 562.446125, 261.389303, 0, 0, 0, 1, 0]

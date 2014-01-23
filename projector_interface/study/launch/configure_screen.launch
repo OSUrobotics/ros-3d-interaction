@@ -1,0 +1,19 @@
+<launch>
+	<arg name="projector_camera_id" default="0"/>
+	<arg name="camera" default="projector_cam"/>
+
+	<!-- webcam driver  -->
+	<include file="$(find simple_webcam)/launch/camera_pipeline.launch">
+		<arg name="camera_id" value="$(arg projector_camera_id)"/>
+		<arg name="info_url" value="file://$(find projector_interface)/study/cfg/camera.yaml"/>
+		<arg name="camera" value="$(arg camera)"/>
+	</include>
+
+	<!-- ar_pose -->
+	<node name="ar_pose" pkg="ar_pose" type="ar_multi" respawn="false" output="screen">
+		<param name="marker_pattern_list" type="string" value="$(find projector_interface)/study/cfg/object_4x4"/>
+		<param name="threshold" type="int" value="100"/>
+		<remap from="/camera/image_raw" to="$(arg camera)/image_raw"/>
+		<remap from="/camera/camera_info" to="$(arg camera)/camera_info"/>
+	</node>
+</launch>
