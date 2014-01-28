@@ -10,17 +10,18 @@
   <url>http://ros.org/wiki/projector_interface</url>
   <depend package="rospy"/>
   <depend package="projector_calibration"/>
-  <depend package="cv_bridge"/>
+  <!-- <depend package="cv_bridge"/> -->
   <depend package="tf"/>
   <depend package="tf_conversions"/>
   <depend package="sensor_msgs"/>
   <depend package="geometry_msgs"/>
-  <depend package="pr2_pick_and_place_demos"/>
-  <depend package="object_manipulator"/>
+  <!-- <depend package="pr2_pick_and_place_demos"/> -->
+<!--   <depend package="object_manipulator"/> -->
   <depend package="image_geometry"/>
   <depend package="pr2_python"/>
   <!-- <depend package="tabletop_object_detector"/> -->
   <depend package="dynamic_reconfigure"/>
+
   <rosdep name="python-scipy"/>
   <rosdep name="python-qt-bindings"/>
   <rosdep name="python-imaging"/>
