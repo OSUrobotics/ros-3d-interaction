@@ -5,6 +5,9 @@
 	<!-- config -->
 	<include file="$(find projector_interface)/study/launch/setup.launch"/>
 
+	<param name="/screen/border_x" type="double" value="0.35"/>
+	<param name="/screen/border_y" type="double" value="0.35"/>
+
 	<!-- webcam (only used for camera_info) -->
 	<include file="$(find simple_webcam)/launch/camera_pipeline.launch">
 		<arg name="camera_id" value="$(arg projector_camera_id)"/>
