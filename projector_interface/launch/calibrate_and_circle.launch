@@ -2,7 +2,6 @@
 	<arg name="flip" default="false"/>
 	<arg name="calibration_camera" default="calib_cam"/>
 	<arg name="circle_objects" default="true"/>
-    <arg name="flip" default="false"/>
     <arg name="calibrate" default="true"/>
     <arg name="window_size" default="25"/>
 	<env name="DISPLAY" value=":0.0"/>
