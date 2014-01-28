@@ -103,6 +103,9 @@ launch_tree.append(Element(
     type='double'
 ))
 
+rospy.set_param('/screen/width', str(width))
+rospy.set_param('/screen/height', str(height))
+
 # wait for a homography
 import rospy
 while not rospy.has_param('/homography'):
