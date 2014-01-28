@@ -11,17 +11,28 @@ from point_tests import sameObject
 
 load('rosh_robot', globals())
 
-xmin = -0.79651666
-xmax =  0.06501853
-ymin =  0.03261997
-ymax =  0.50817382
+while not rospy.has_param('/screen/height'):
+    rospy.sleep(0.1)
 
-# xs = np.linspace(xmin,xmax,4)
+width = float(rospy.get_param('/screen/width',))
+height = float(rospy.get_param('/screen/height'))
+
+border_x = float(rospy.get_param('/screen/border_x', 0))
+border_y = float(rospy.get_param('/screen/border_y', 0))
+
+xmin = 0 + border_x
+xmax = width - border_x
+ymin = 0 + border_y
+ymax = height - border_y
+
+services.clear_polygons()
+
+xs = np.linspace(xmin,xmax,4)
 ys = np.linspace(ymin,ymax,3)
-xs = np.arange(xmin+0.05, xmax, ys[1] - ys[0])
+# xs = np.arange(xmin+0.05, xmax, abs(ys[1] - ys[0]))
 xx, yy = np.meshgrid(xs, ys)
 points = np.array([(x,y,0) for x,y in zip(xx.ravel(), yy.ravel())])
-points_msg = xyz_array_to_pointcloud2(points, now(), '/table')
+points_msg = xyz_array_to_pointcloud2(points, now(), '/bottom_left')
 topics.object_cloud(points_msg)
 services.set_selection_method(0)
     
@@ -49,8 +60,8 @@ for idx in chain(*order):
     services.clear_hilights()
     
     pt = PointStamped()
-    pt.header.frame_id = '/table'
-    pt.header.stamp = now()
+    pt.header.frame_id = '/bottom_left'
+    pt.header.stamp = rospy.Time(0)
     pt.point.x, pt.point.y, pt.point.z = point
     
     t1 = now()
