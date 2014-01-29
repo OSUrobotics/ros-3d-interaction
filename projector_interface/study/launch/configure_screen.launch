@@ -24,4 +24,10 @@
 		<arg name="calibration_camera" value="$(arg camera)"/>
 		<arg name="window_size" value="1"/>
 	</include>
+
+	<!-- config script -->
+	<node name="configure" type="rosh" pkg="rosh" args="$(find projector_interface)/study/configure_screen.py"/>
+
+	<!-- confirm the config -->
+	<node name="config_text" type="config_test.py" pkg="projector_interface" args="$(find projector_interface)/study/config_test.pkl"/>
 </launch>
