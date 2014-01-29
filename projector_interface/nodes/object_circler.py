@@ -454,8 +454,8 @@ class Circler(QtGui.QGraphicsView):
         if self.circles:
             pt_arr = [pt.x, pt.y, pt.z]
             to_hilight = self.circles.search_nn([pt.x, pt.y, pt.z])
-            # np.spacing(1) is equivalent to eps in matlab
-            if to_hilight.dist(pt_arr) < np.spacing(1):
+            # np.spacing(2) is equivalent to eps in matlab (apparently 1 doesn't work)
+            if to_hilight.dist(pt_arr) < 0.09:
                 to_hilight.data.showHilight(color)
 
     def clear_hilights(self):
@@ -481,7 +481,10 @@ class Circler(QtGui.QGraphicsView):
             
             pt_msg = PointStamped()
             pt_msg.header = msg.header
-            pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.clicked_object.point3d
+            try:
+                pt_msg.point.x, pt_msg.point.y, pt_msg.point.z = self.clicked_object.point3d
+            except:
+                pass # nothing was clicked
             return srv.GetCursorStatsResponse(msg, pt_msg)
         
     def set_selection_method(self, req):
