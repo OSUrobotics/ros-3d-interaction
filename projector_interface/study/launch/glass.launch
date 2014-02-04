@@ -1,0 +1,8 @@
+<launch>
+	<arg name="ip"/>
+	<arg name="port"/>
+
+    <node name="sensor_bridge" type="glassSensorBridge.py" pkg="glass_ros_bridge" args="$(arg ip) $(arg port)">
+    <remap from="/android/pose" to="/head_pose"/>
+  </node>
+</launch>
