@@ -35,7 +35,15 @@
 	<node args="0 0 1.7 0 0 0 world /face_detection 100" name="face_detection" pkg="tf" type="static_transform_publisher"/>
 
 	<include file="$(find projector_interface)/study/launch/glass.launch">
-		<arg name="$(arg ip)"/>
-		<arg name="$(arg port)"/>
+		<arg name="ip" value="$(arg ip)"/>
+		<arg name="port" value="$(arg port)"/>
 	</include>
+
+	<!-- Intersect the pose with the screen plane -->
+	<node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
+		<remap from="pose" to="head_pose"/>
+		<param name="plane_frame" value="bottom_left"/>
+  </node>
+
+
 </launch>
