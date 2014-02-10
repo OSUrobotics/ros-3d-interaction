@@ -55,7 +55,7 @@ launch_tree.append(elem_pi)
 launch_tree.append(elem_optical_rotate)
 
 # first we need the camera link
-parent = 'world_to_projector_cam_rgb_optical_frame'
+parent = 'projector_cam_rgb_optical_frame'
 
 transform = PoseStamped(frame_id='world', position=Point(0,0,0.5), orientation=Quaternion(0,0,0,1))
 elem = make_tf_pub('world', 'projection_cam_link', transform)
