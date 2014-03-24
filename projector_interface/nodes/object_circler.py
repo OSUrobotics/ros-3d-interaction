@@ -500,6 +500,8 @@ class Circler(QtGui.QGraphicsView):
 
     def draw_polygon(self, req):
         with self.polygon_lock:
+            if req.id in self.polygons: self.clear_polygon(req.id)
+
             # Project the polygon points onto the interface before saving them
             poly = QtGui.QPolygon()
             pts_arr = np.array([[(p.x, p.y, p.z) for p in req.polygon.polygon.points]])
@@ -537,16 +539,20 @@ class Circler(QtGui.QGraphicsView):
                     text_item.setBrush(QtGui.QBrush(Colors.WHITE))
                     text_item.setPos(textRect.topLeft())
 
-
             self.polygons[req.id] = GraphicsItemInfo(poly_item, req.id, req.label)
             self.scene().invalidate(self.polygons[req.id].item.boundingRect())
 
+    def clear_polygon(self, poly_id, remove=True):
+        poly = self.polygons[poly_id]
+        self.scene().removeItem(poly.item) 
+        QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.boundingRect()))
+        QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.childrenBoundingRect()))
+        if remove: del self.polygons[poly_id]
+
     def clear_polygons(self):
         with self.polygon_lock:
-            for poly in self.polygons.values():
-                self.scene().removeItem(poly.item) 
-                QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.boundingRect()))
-                QtCore.QTimer.singleShot(100, partial(self.scene().invalidate, poly.item.childrenBoundingRect()))
+            for poly_id in self.polygons.keys():
+                self.clear_polygon(poly_id, remove=False)
             self.polygons.clear()
 
     def handle_clear_polygons(self, _):
