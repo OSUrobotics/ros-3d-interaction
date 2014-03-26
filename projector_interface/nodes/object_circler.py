@@ -100,6 +100,7 @@ class Circler(QtGui.QGraphicsView):
     polygon_lock = RLock()
     
     polygons = dict()
+    polygon_pens = dict()
 
     key_handlers = dict()
 
@@ -165,7 +166,7 @@ class Circler(QtGui.QGraphicsView):
         self.circles = kdtree.create(dimensions=3)
 
     def resetClick(self, obj):
-        obj.item.setPen(self.POLYGON_PEN)
+        obj.item.setPen(self.polygon_pens[obj.uid])
         obj.item.setZValue(0)
         obj.clicked = False
         self.scene().invalidate(obj.item.boundingRect())
@@ -384,7 +385,7 @@ class Circler(QtGui.QGraphicsView):
                     else:
                         dirty = info.active
                         info.active = False
-                        info.item.setPen(self.POLYGON_PEN)
+                        info.item.setPen(self.polygon_pens[info.uid])
                         info.item.setZValue(0)
                         self.resetClickedObject()
                     if dirty:
@@ -500,7 +501,8 @@ class Circler(QtGui.QGraphicsView):
 
     def draw_polygon(self, req):
         with self.polygon_lock:
-            if req.id in self.polygons: self.clear_polygon(req.id)
+            if req.id in self.polygons:
+                self.clear_polygon(req.id)
 
             # Project the polygon points onto the interface before saving them
             poly = QtGui.QPolygon()
@@ -512,7 +514,10 @@ class Circler(QtGui.QGraphicsView):
             for point in points[0]:
                 poly.push_back(QtCore.QPoint(point[1], point[0]))
 
-            poly_item = self.scene().addPolygon(poly, pen=self.POLYGON_PEN)
+            my_pen = QtGui.QPen(QtGui.QColor(req.color.r, req.color.g, req.color.b), 5)
+
+            poly_item = self.scene().addPolygon(poly, pen=my_pen)
+
 
             textRect = poly.boundingRect()
             # Project the text rect points onto the interface
@@ -539,6 +544,7 @@ class Circler(QtGui.QGraphicsView):
                     text_item.setBrush(QtGui.QBrush(Colors.WHITE))
                     text_item.setPos(textRect.topLeft())
 
+            self.polygon_pens[req.id] = my_pen
             self.polygons[req.id] = GraphicsItemInfo(poly_item, req.id, req.label)
             self.scene().invalidate(self.polygons[req.id].item.boundingRect())
 
