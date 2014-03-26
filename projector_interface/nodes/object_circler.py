@@ -533,6 +533,7 @@ class Circler(QtGui.QGraphicsView):
                 for point in text_rect_points[0]:
                     text_poly.push_back(QtCore.QPoint(point[1], point[0]))
                 textRect = text_poly.boundingRect()
+                textRect = poly.boundingRect() # DEBUG!
 
                 if req.label:
                     font = QtGui.QFont('Decorative', 30)
