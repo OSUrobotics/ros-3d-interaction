@@ -1,0 +1,72 @@
+<launch>
+	<arg name="projector_camera_id" default="0"/>
+	<arg name="camera" default="projector_cam"/>
+
+	<!-- glass bridge params -->
+	<arg name="ip"/>
+	<arg name="port"/>
+
+	<param name="study_data_dir" value="$(find projector_interface)/study/data"/>
+
+ 	<!-- webcam (for info, and plane marker detection) -->
+	<include file="$(find simple_webcam)/launch/camera_pipeline.launch">
+		<arg name="camera_id" value="$(arg projector_camera_id)"/>
+		<arg name="info_url" value="file://$(find projector_interface)/study/cfg/camera.yaml"/>
+		<arg name="camera" value="$(arg camera)"/>
+	</include>
+
+	<!-- ar_pose -->
+	<node name="ar_pose" pkg="ar_pose" type="ar_multi" respawn="false" output="screen">
+		<param name="marker_pattern_list" type="string" value="$(find projector_interface)/study/cfg/object_4x4"/>
+		<param name="threshold" type="int" value="100"/>
+		<remap from="/camera/image_raw" to="$(arg camera)/image_raw"/>
+		<remap from="/camera/camera_info" to="$(arg camera)/camera_info"/>
+	</node>
+
+
+	<!-- transforms -->
+	<arg name="pi/2" value="1.5707963267948966"/>
+	<arg name="optical_rotate" value="0 0 0 -$(arg pi/2) 0 -$(arg pi/2)"/>
+
+	<node args="0 0 0.5 0 0 0 1 world projection_cam_link 100" name="world_to_projection_cam_link" pkg="tf" type="static_transform_publisher"/>
+	<node args="$(arg optical_rotate) projection_cam_link projector_cam_rgb_optical_frame 100" name="projector_cam_optical_rotate" pkg="tf" type="static_transform_publisher"/>
+
+
+	<!-- 	fake face detection frame - assume a person is standing (approx 1.7 meters high)
+	yaw (4th number) will need to be adjusted since glass' 0 is at magnetic north -->
+	<!-- <node args="0 -.5 0 .5 -.1 0 world /face_detection 100" name="face_detection" pkg="tf" type="static_transform_publisher"/> -->
+	<node name="marker_server" type="interactive_vector_marker.py" pkg="robot_vector_control" args="world face_detection">
+		<param name="publish_pose" value="false"/>
+	</node>
+
+
+	<!-- projection system -->
+	<include file="$(find projector_interface)/launch/calibrate_and_circle.launch">
+		<arg name="flip" value="false"/>
+		<arg name="calibrate" value="true"/>
+		<arg name="calibration_camera" value="$(arg camera)"/>
+		<arg name="window_size" value="1"/>
+	</include>
+
+	<!-- glass -->
+
+	<include file="$(find projector_interface)/study/launch/glass.launch">
+		<arg name="ip" value="$(arg ip)"/>
+		<arg name="port" value="$(arg port)"/>
+	</include>
+
+	<!-- Intersect the pose with the screen plane -->
+	<node name="intersect_plane" pkg="world_intersect" type="intersect_plane.py">
+		<remap from="pose" to="head_pose"/>
+		<param name="plane_frame" value="bottom_left"/>
+	</node>
+
+	<!-- sound play for tts -->
+	<!-- if no sound, make sure it's using the right output device 
+	in in the gnome sound settings (gnome-control-center sound) -->
+	<node name="soundplay" type="soundplay_node.py" pkg="sound_play"/>
+
+	<!-- The interface -->
+	<node name="letterboard_interface" type="projected_letterboard.py" pkg="projected_interface_builder"/>
+
+</launch>
