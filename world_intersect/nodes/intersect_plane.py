@@ -95,7 +95,9 @@ class Intersector(object):
         self.table_pose  = PoseStamped()
         self.rate        = rospy.Rate(20)
         self.tfl         = tf.TransformListener()
-        self.int_pub     = rospy.Publisher('intersected_points', PointCloud2)
+        self.int_pub2    = rospy.Publisher('intersected_points', PointCloud2)
+        self.int_pub     = rospy.Publisher('intersected_point', PointStamped)
+
 
         self.table_pose.pose.orientation.w = 1.0
         self.table_pose.header.frame_id = plane_frame
@@ -118,7 +120,8 @@ class Intersector(object):
                 ]]))
                 cloud.header.frame_id = self.plane_frame
                 cloud.header.stamp = self.pose.header.stamp
-                self.int_pub.publish(cloud)
+                self.int_pub2.publish(cloud)
+                self.int_pub.publish(intersection)
                 self.rate.sleep()
     
 if __name__ == '__main__':
