@@ -31,9 +31,12 @@
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PointStamped.h>
+
+#include <std_msgs/Header.h>
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
@@ -85,7 +88,7 @@ NeverEmptyQueue<geometry_msgs::PoseStampedConstPtr> g_pose_queue;
 
 // params
 double g_resolution, g_min_dist;
-std::string g_vector_frame;
+std::string g_vector_frame, g_fixed_frame;
 
 void cloudCallback(const sensor_msgs::PointCloud2ConstPtr& cloud_msg) {
 	g_cloud_queue.push(cloud_msg);
@@ -138,7 +141,10 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 
 	int nPoints = octree.getIntersectedVoxelIndices(origin, direction, k_indices);
 	PointCloud::Ptr out (new PointCloud);
-	out->header.frame_id = vector_frame;
+	std_msgs::Header out_header;
+	out_header.frame_id = vector_frame;
+	out_header.stamp = ros::Time::now();
+	out->header = pcl_conversions::toPCL(out_header);
 	for(int i=0; i<nPoints; i++) {
 		if(g_min_dist < DBL_MAX) {
 			pcl::PointXYZ pt = cloud.points[k_indices[i]];
@@ -146,13 +152,12 @@ void intersectPose(const sensor_msgs::PointCloud2ConstPtr& cloud_msg, const geom
 				out->points.push_back(cloud.points[k_indices[i]]);
 		}
 	}
-	out->header.stamp = ros::Time::now();
 	sensor_msgs::PointCloud2 out_msg;
 	pcl::toROSMsg(*out, out_msg); 	
 	sensor_msgs::PointCloud2 out_transformed;
 	out_msg.header.stamp=ros::Time(0);
-	listener->waitForTransform(out->header.frame_id, "base_link", ros::Time(0), ros::Duration(2.0));
-	pcl_ros::transformPointCloud("base_link", out_msg, out_transformed, *listener);
+	listener->waitForTransform(out->header.frame_id, g_fixed_frame, ros::Time(0), ros::Duration(2.0));
+	pcl_ros::transformPointCloud(g_fixed_frame, out_msg, out_transformed, *listener);
 	cloud_pub.publish(out_transformed);
 }
 
@@ -169,6 +174,7 @@ int main(int argc, char* argv[]) {
 	
 	ros::NodeHandle pnh("~");
 	pnh.param("vector_frame",      g_vector_frame, std::string("intersected_vector"));
+	pnh.param("fixed_frame",       g_fixed_frame,  std::string("base_link"));
 	pnh.param("octree_resolution", g_resolution,   0.02);
 	pnh.param("min_dist",          g_min_dist,     DBL_MAX);
 	
