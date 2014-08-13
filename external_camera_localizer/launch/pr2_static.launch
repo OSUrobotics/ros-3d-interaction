@@ -1,4 +1,0 @@
-<launch>	
-	<node pkg="tf" type="static_transform_publisher" name="world_to_odom_combined" 
-	        args="-0.9169857514617992, 0.19289434969759217, -0.31882807038892724, 0.6480694334307825, -0.02295019930401206, 0.7611734251598666, -0.009711572221203243 world odom_combined 100"/>
-</launch>
