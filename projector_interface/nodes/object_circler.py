@@ -584,6 +584,7 @@ class Circler(QtGui.QGraphicsView):
 
     def __init__(self):
         super(Circler, self).__init__()
+        self.setStyleSheet("QGraphicsView {border-style: none;}");
         self.tfl = tf.TransformListener()
         r = rospy.Rate(10)
         rospy.loginfo('waiting for homography...')
