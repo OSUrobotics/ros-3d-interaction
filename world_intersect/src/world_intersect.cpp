@@ -180,9 +180,9 @@ int main(int argc, char* argv[]) {
 	
 	listener = new tf::TransformListener(ros::Duration(45));
 	broadcaster = new tf::TransformBroadcaster();
-    //cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
-    cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("intersected_points", 1);
-    point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
+	//cloud_pub = nh.advertise<PointCloud>("intersected_points", 1);
+	cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("intersected_points", 1);
+	point_pub = nh.advertise<geometry_msgs::PointStamped>("intersected_point", 1);
 
 	ros::Subscriber cloud_sub = nh.subscribe<sensor_msgs::PointCloud2>("cloud", 1, cloudCallback);
 	ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("pose", 1, poseCallback);
@@ -203,12 +203,4 @@ int main(int argc, char* argv[]) {
 		ros::spinOnce();
 		rate.sleep();
 	}
-	
-	// message_filters::Subscriber<sensor_msgs::PointCloud2>   cloud_sub(nh, "cloud", 1);
-	// message_filters::Subscriber<geometry_msgs::PoseStamped>   pose_sub(nh, "pose", 1);
-	// typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, geometry_msgs::PoseStamped> ApproximatePolicy;
-	// message_filters::Synchronizer<ApproximatePolicy> sync(ApproximatePolicy(10), cloud_sub, pose_sub);
-	// sync.registerCallback(boost::bind(&intersectPose, _1, _2));
-		
-	//ros::spin();
 }
