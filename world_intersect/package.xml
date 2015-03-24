@@ -1,0 +1,50 @@
+<package>
+  <name>world_intersect</name>
+  <version>1.0.0</version>
+  <description>Nodes for intersecting rays with various types of world models.</description>
+  <maintainer email="lazewatd@engr.oregonstate.edu">Dan Lazewatsky</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/world_intersect</url>
+  <url type="bugtracker">https://github.com/OSUrobotics/ros-3d-interaction/issues</url>
+
+  <author>Dan Lazewatsky</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>pcl_conversions</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>message_filters</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>pr2_python</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roscpp</run_depend>
+  <run_depend>pcl_ros</run_depend>
+  <run_depend>pcl_conversions</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>message_filters</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>pr2_python</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>pcl_ros</test_depend> -->
+  <!-- <test_depend>pcl_conversions</test_depend> -->
+  <!-- <test_depend>geometry_msgs</test_depend> -->
+  <!-- <test_depend>sensor_msgs</test_depend> -->
+  <!-- <test_depend>std_msgs</test_depend> -->
+  <!-- <test_depend>message_filters</test_depend> -->
+  <!-- <test_depend>tf</test_depend> -->
+  <!-- <test_depend>pr2_python</test_depend> -->
+
+</package>

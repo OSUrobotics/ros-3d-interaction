@@ -1,0 +1,57 @@
+<package>
+  <name>projector_interface</name>
+  <version>1.0.0</version>
+  <description>Provides a node for displaying polygon or circle projected interfaces.</description>
+  <maintainer email="lazewatd@engr.oregonstate.edu">Dan Lazewatsky</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/projector_interface</url>
+  <url type="bugtracker">https://github.com/OSUrobotics/ros-3d-interaction/issues</url>
+
+  <author>Dan Lazewatsky</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>rospy</build_depend>
+  <build_depend>projector_calibration</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>image_geometry</build_depend>
+  <build_depend>pr2_python</build_depend>
+  <build_depend>dynamic_reconfigure</build_depend>
+  <build_depend>message_generation</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>rospy</run_depend>
+  <run_depend>projector_calibration</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>tf_conversions</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>image_geometry</run_depend>
+  <run_depend>pr2_python</run_depend>
+  <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>python-qt-bindings</run_depend>
+  <run_depend>python-imaging</run_depend>
+  <run_depend>python-scipy</run_depend>
+  <run_depend>python-opencv</run_depend>
+
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>rospy</test_depend> -->
+  <!-- <test_depend>projector_calibration</test_depend> -->
+  <!-- <test_depend>tf</test_depend> -->
+  <!-- <test_depend>tf_conversions</test_depend> -->
+  <!-- <test_depend>sensor_msgs</test_depend> -->
+  <!-- <test_depend>geometry_msgs</test_depend> -->
+  <!-- <test_depend>image_geometry</test_depend> -->
+  <!-- <test_depend>pr2_python</test_depend> -->
+  <!-- <test_depend>dynamic_reconfigure</test_depend> -->
+
+</package>

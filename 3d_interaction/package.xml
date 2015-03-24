@@ -1,0 +1,29 @@
+<package>
+  <name>3d_interaction</name>
+  <version>1.0.0</version>
+  <description>Contains packages for projecting interfaces into the world, and interacting with those interfaces.</description>
+  <maintainer email="lazewatd@engr.oregonstate.edu">Dan Lazewatsky</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/3d_interaction</url>
+  <url type="bugtracker">https://github.com/OSUrobotics/ros-3d-interaction/issues</url>
+
+  <author>Dan Lazewatsky</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>projector_interface</run_depend>
+  <run_depend>projector_calibration</run_depend>
+  <run_depend>world_intersect</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+  <export>
+      <metapackage/>
+  </export>
+</package>

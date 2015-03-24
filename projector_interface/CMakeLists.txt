@@ -1,28 +1,54 @@
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+# Catkin User Guide: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/user_guide.html
+# Catkin CMake Standard: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/standards.html
+cmake_minimum_required(VERSION 2.8.3)
+project(projector_interface)
+# Load catkin and all dependencies required for this package
+# TODO: remove all from COMPONENTS that are not catkin packages.
+find_package(catkin REQUIRED COMPONENTS
+    rospy
+    projector_calibration
+    tf
+    tf_conversions
+    sensor_msgs
+    geometry_msgs
+    image_geometry
+    pr2_python
+    dynamic_reconfigure
+    message_generation
+)
+catkin_python_setup()
 
-# Set the build type.  Options are:
-#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-#  Debug          : w/ debug symbols, w/o optimization
-#  Release        : w/o debug symbols, w/ optimization
-#  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+add_service_files(
+    DIRECTORY srv
+    FILES
+    CircleInhibit.srv
+    ClearHilights.srv
+    ClearPolygons.srv
+    DrawPolygon.srv
+    GetCursorStats.srv
+    HilightObject.srv
+    SetSelectionMethod.srv
+)
 
-rosbuild_init()
+generate_messages(
+   DEPENDENCIES geometry_msgs sensor_msgs
+)
 
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+generate_dynamic_reconfigure_options(cfg/Interface.cfg)
 
-#uncomment if you have defined messages
-rosbuild_genmsg()
-#uncomment if you have defined services
-rosbuild_gensrv()
+catkin_package(
+    CATKIN_DEPENDS rospy projector_calibration tf tf_conversions sensor_msgs geometry_msgs image_geometry pr2_python dynamic_reconfigure message_runtime
+)
 
-#add dynamic reconfigure api
-rosbuild_find_ros_package(dynamic_reconfigure)
-include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
-gencfg()
+install(
+    PROGRAMS
+        nodes/adjust_pose.py
+        nodes/click.py
+        nodes/find_objects.py
+        nodes/object_circler.py
+        nodes/object_manipulation.py
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
