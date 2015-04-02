@@ -272,7 +272,8 @@ class Circler(QtGui.QGraphicsView):
 
             self.int_objects = objects
             transformed_objects = self.projectPoints(objects, msg.header)
-            self.int_projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
+            if len(transformed_objects) > 0:
+                self.int_projected_objects = cv2.perspectiveTransform(transformed_objects, self.H)
 
     def cursor_cb(self, msg):
         self.cursorMoved.emit(msg)
@@ -302,7 +303,8 @@ class Circler(QtGui.QGraphicsView):
             self.cursor_header = cursor_msg.header
             self.cursor_pts = objects
             transformed_pts = self.projectPoints(self.cursor_pts, cursor_msg.header)
-            self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
+            if len(transformed_pts) > 0:
+                self.projected_cursor.extend(cv2.perspectiveTransform(transformed_pts, self.H)[0])
 
 
         with self.cursor_lock:
@@ -424,6 +426,7 @@ class Circler(QtGui.QGraphicsView):
 
 
     def projectPoints(self, points, point_header):
+        if self.model is None: return np.array([])
         pts_out = []
         for point in points[0]:
             pt = PointStamped()
@@ -436,7 +439,17 @@ class Circler(QtGui.QGraphicsView):
                 stamp = rospy.Time(0)
                 pt.header = point_header
                 pt.header.stamp = stamp
-                pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+                try:
+                    pt_out = self.tfl.transformPoint(self.model.tf_frame, pt).point
+                except tf.LookupException:
+                    if (rospy.Time.now() - self.last_warn_time).to_sec() > 1:
+                        rospy.logwarn(
+                            "Couldn't transform from %s to %s. "+\
+                            "If this happens on startup, it probably just means the TF tree isn't ready yet. "+\
+                            "If it happens at other times, or you see this a lot, there may be a problem with"+\
+                            "the TF tree.", self.model.tf_frame, point_header.frame_id)
+                    self.last_warn_time = rospy.Time.now()
+                    return np.array([])
             else:
                 pt_out = pt.point
             # project it onto the image plane
@@ -508,11 +521,12 @@ class Circler(QtGui.QGraphicsView):
             poly = QtGui.QPolygon()
             pts_arr = np.array([[(p.x, p.y, p.z) for p in req.polygon.polygon.points]])
             points = self.projectPoints(pts_arr, req.polygon.header)
-            points = cv2.perspectiveTransform(points, self.H)
-            if self.flip:
-                points[0] = ([self.height(), self.width()] - points[0])
-            for point in points[0]:
-                poly.push_back(QtCore.QPoint(point[1], point[0]))
+            if len(points) > 0:
+                points = cv2.perspectiveTransform(points, self.H)
+                if self.flip:
+                    points[0] = ([self.height(), self.width()] - points[0])
+                for point in points[0]:
+                    poly.push_back(QtCore.QPoint(point[1], point[0]))
 
             my_pen = QtGui.QPen(QtGui.QColor(req.color.r, req.color.g, req.color.b), 5)
 
@@ -526,14 +540,15 @@ class Circler(QtGui.QGraphicsView):
                     np.array([[(p.x,p.y,p.z) for p in req.text_rect.points]]),
                     req.polygon.header
                 )
-                text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
-                if self.flip:
-                    text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
-                text_poly = QtGui.QPolygon()
-                for point in text_rect_points[0]:
-                    text_poly.push_back(QtCore.QPoint(point[1], point[0]))
-                textRect = text_poly.boundingRect()
-                textRect = poly.boundingRect() # DEBUG!
+                if len(text_rect_points) > 0:
+                    text_rect_points = cv2.perspectiveTransform(text_rect_points, self.H)
+                    if self.flip:
+                        text_rect_points[0] = ([self.height(), self.width()] - text_rect_points[0]) 
+                    text_poly = QtGui.QPolygon()
+                    for point in text_rect_points[0]:
+                        text_poly.push_back(QtCore.QPoint(point[1], point[0]))
+                    textRect = text_poly.boundingRect()
+                    textRect = poly.boundingRect() # DEBUG!
 
                 if req.label:
                     font = QtGui.QFont('Decorative', 30)
@@ -584,6 +599,7 @@ class Circler(QtGui.QGraphicsView):
 
     def __init__(self):
         super(Circler, self).__init__()
+        self.last_warn_time = rospy.Time(0)
         self.setStyleSheet("QGraphicsView {border-style: none;}");
         self.tfl = tf.TransformListener()
         r = rospy.Rate(10)
