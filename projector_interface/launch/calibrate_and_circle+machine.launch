@@ -13,7 +13,7 @@
 		<remap from="image" to="$(arg calibration_camera)/image_mono"/>
 		<param name="grid_size" value="5x7"/>
 	</node>
-	<node name="object_circler" type="object_circler.py" pkg="projector_interface" respawn="true" machine="$(arg machine)"> <!--args="-graphicssystem opengl"-->
+	<node name="object_circler" type="object_circler.py" pkg="projector_interface" respawn="true" machine="$(arg machine)" args="-graphicssystem opengl">
 	 <!-- launch-prefix="xterm -e python -m cProfile -o /home/lazewatd/Dropbox/research/ros-pkg-shared/3d_interaction/projector_interface/profile.txt"> -->
 		<remap from="camera_info" to="$(arg calibration_camera)/camera_info"/>
 		<remap from="intersected_points_cursor" to="/intersected_points"/>
