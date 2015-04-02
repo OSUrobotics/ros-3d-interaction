@@ -35,7 +35,7 @@ import numpy as np
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 from math import sin, cos, pi
 import tf
-from pr2_python.pointclouds import xyz_array_to_pointcloud2
+from sensor_msgs.point_cloud2 import create_cloud_xyz32
 
 def cast_ray(pose, plane, tfl):
     # assume the plane passes through table.pose
@@ -113,13 +113,13 @@ class Intersector(object):
             if not self.pose: continue
             intersection = cast_ray(self.pose, self.table_pose, self.tfl)
             if intersection:
-                cloud = xyz_array_to_pointcloud2(np.array([[
-                    intersection.point.x,
-                    intersection.point.y,
-                    intersection.point.z
-                ]]))
-                cloud.header.frame_id = self.plane_frame
-                cloud.header.stamp = self.pose.header.stamp
+                cloud = create_cloud_xyz32(
+                    rospy.Header(frame_id=self.plane_frame, stamp=self.pose.header.stamp),
+                    np.array([[
+                        intersection.point.x,
+                        intersection.point.y,
+                        intersection.point.z
+                    ]]))
                 self.int_pub2.publish(cloud)
                 self.int_pub.publish(intersection)
                 self.rate.sleep()
