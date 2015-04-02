@@ -32,15 +32,15 @@ from projector_calibration.msg import Homography
 import rospy
 from rospy.numpy_msg import numpy_msg
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 import PySide
 import PySide.QtCore
 import sys
-from functools import partial
 import numpy as np
+import cv, cv2
+
 bridge = CvBridge()
 
-import cv, cv2
 
 calib_im = None
 
@@ -53,7 +53,7 @@ class Calibrator(object):
 	def detect(self):
 		try:
 			im1 = bridge.imgmsg_to_cv(self.image)
-		except AttributeError, e:
+		except AttributeError:
 			rospy.logwarn("Tried to convert a None image")
 			return False
 		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
@@ -71,15 +71,9 @@ class Calibrator(object):
 			H, mask = cv2.findHomography(self.img_corners, self.grid_corners, method=cv2.RANSAC)
 			pprint(H)
 			rospy.set_param('/homography', H.flatten().tolist())
-	        # self.homography_pub.publish(H.flatten())
-
-	        # c1 = np.array([corners1[1]])
-	        # c2 = np.array([corners2])
-	        # err = cv2.perspectiveTransform(c1,H) - c2
 			sys.exit(0)
 			return True
 		return False
-		
 	
 	def publish_image(self, grid_pub):
 		im = self.grid.getPatternAsImage(im_type='OPENCV')
@@ -126,7 +120,6 @@ class Calibrator(object):
 					self.grid.scale = 1.0
 					self.grid.repaint()
 			self.calibrate()
-		# sys.exit(self.find_homography())
 		self.find_homography()
 		
 	def image_cb(self, msg):

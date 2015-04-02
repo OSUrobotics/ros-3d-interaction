@@ -25,15 +25,12 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Author Dan Lazewatsky/lazewatd@engr.orst.edu
-import roslib; roslib.load_manifest('world_intersect')
 import rospy
-#from tabletop_object_detector.msg import Table
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point, PointStamped, PoseStamped
+from geometry_msgs.msg import PointStamped, PoseStamped
 from sensor_msgs.msg import PointCloud2
 import numpy as np
-from tf.transformations import quaternion_from_euler, euler_from_quaternion
-from math import sin, cos, pi
+from tf.transformations import euler_from_quaternion
+from math import sin, cos
 import tf
 from sensor_msgs.point_cloud2 import create_cloud_xyz32
 
@@ -53,13 +50,12 @@ def cast_ray(pose, plane, tfl):
     m = q + [0,0,1]
     
     try:
-        # pose.header.stamp = tfl.getLatestCommonTime(table.pose.header.frame_id, pose.header.frame_id)
         tfl.waitForTransform(plane.header.frame_id, pose.header.frame_id, rospy.Time(0), rospy.Duration.from_sec(5))
         pose.header.stamp = rospy.Time(0)
         pose_transformed = tfl.transformPose(plane.header.frame_id, pose)
     except tf.Exception, e:
-        print 'trouble with tf lookup'
-        print e.message
+        rospy.logerr('trouble with tf lookup')
+        rospy.logerr(e.message)
         return False
        
     # origin vector
@@ -79,7 +75,6 @@ def cast_ray(pose, plane, tfl):
          sin(ay)
     ])
     # intersection
-    #t = (q - p).dot(m) / d.dot(m)
     t = np.dot(q-p,m) / np.dot(d,m)
     if t < 0: # some normal must be flipped since t is normally > 0
         v = PointStamped()
@@ -105,9 +100,6 @@ class Intersector(object):
     def pose_cb(self, pose):
         self.pose = pose
         
-    # def table_cb(self, table):
-    #     self.table = table
-        
     def run(self):
         while not rospy.is_shutdown():
             if not self.pose: continue
@@ -127,8 +119,7 @@ class Intersector(object):
 if __name__ == '__main__':
     rospy.init_node('intersect_plane')
     plane_frame = rospy.get_param('~plane_frame')
-    print 'Plane frame = %s' % plane_frame
+    rospy.loginfo('Plane frame = %s' % plane_frame)
     intersector = Intersector(plane_frame)
     pose_sub  = rospy.Subscriber('pose',  PoseStamped, intersector.pose_cb)
-    # table_sub = rospy.Subscriber('table', Table,       intersector.table_cb)
     intersector.run()
