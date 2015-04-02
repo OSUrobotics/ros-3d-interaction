@@ -1,12 +1,12 @@
 <package>
-  <name>3d_interaction</name>
+  <name>projected_interface_tools</name>
   <version>1.0.0</version>
   <description>Contains packages for projecting interfaces into the world, and interacting with those interfaces.</description>
   <maintainer email="lazewatd@engr.oregonstate.edu">Dan Lazewatsky</maintainer>
 
   <license>BSD</license>
 
-  <url type="website">http://ros.org/wiki/3d_interaction</url>
+  <url type="website">http://ros.org/wiki/projected_interface_tools</url>
   <url type="bugtracker">https://github.com/OSUrobotics/ros-3d-interaction/issues</url>
 
   <author>Dan Lazewatsky</author>
