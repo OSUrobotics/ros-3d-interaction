@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(PCL REQUIRED)
+find_package(cmake_modules REQUIRED)
 find_package(Eigen REQUIRED)
 include_directories(
     ${catkin_INCLUDE_DIRS}
