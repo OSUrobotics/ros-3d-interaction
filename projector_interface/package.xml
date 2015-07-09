@@ -41,6 +41,7 @@
   <run_depend>python-imaging</run_depend>
   <run_depend>python-scipy</run_depend>
   <run_depend>python-opencv</run_depend>
+  <run_depend>python-kdtree</run_depend>
 
 
   <!-- Dependencies needed only for running tests. -->
