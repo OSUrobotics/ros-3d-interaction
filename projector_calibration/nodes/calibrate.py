@@ -37,7 +37,7 @@ import PySide
 import PySide.QtCore
 import sys
 import numpy as np
-import cv, cv2
+import cv2
 
 bridge = CvBridge()
 
@@ -52,15 +52,14 @@ class Calibrator(object):
 	
 	def detect(self):
 		try:
-			im1 = bridge.imgmsg_to_cv(self.image)
+			im1 = bridge.imgmsg_to_cv2(self.image)
 		except AttributeError:
 			rospy.logwarn("Tried to convert a None image")
 			return False
-		corners1 = cv.FindChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
+		retval, corners1 = cv2.findChessboardCorners(im1, (self.grid.nCols-1, self.grid.nRows-1))
 		corners2 = np.array(self.grid.corners, dtype=np.float32)
-
-		if np.asarray(corners1[1]).shape == corners2.shape:
-			self.img_corners  = np.vstack((self.img_corners,  np.float32(corners1[1])))
+		if (corners1 is not None) and corners1.squeeze().shape == corners2.shape:
+			self.img_corners  = np.vstack((self.img_corners,  np.float32(corners1.squeeze())))
 			self.grid_corners = np.vstack((self.grid_corners, corners2))
 			return True
 		return False
@@ -78,7 +77,7 @@ class Calibrator(object):
 	def publish_image(self, grid_pub):
 		im = self.grid.getPatternAsImage(im_type='OPENCV')
 
-		msg = bridge.cv_to_imgmsg(self.removeAlpha(im), 'rgb8')
+		msg = bridge.cv2_to_imgmsg(self.removeAlpha(im), 'rgb8')
 		msg.header.stamp = rospy.Time.now()
 		grid_pub.publish(msg)
 
