@@ -74,22 +74,6 @@ class Calibrator(object):
 			return True
 		return False
 	
-	def publish_image(self, grid_pub):
-		im = self.grid.getPatternAsImage(im_type='OPENCV')
-
-		msg = bridge.cv2_to_imgmsg(self.removeAlpha(im), 'rgb8')
-		msg.header.stamp = rospy.Time.now()
-		grid_pub.publish(msg)
-
-	def removeAlpha(self, im):
-		r = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
-		g = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
-		b = cv.CreateMat(im.height, im.width, cv.CV_8UC1)
-		cv.Split(im,r,g,b,None)
-		imrgb = cv.CreateMat(im.height, im.width, cv.CV_8UC3)
-		cv.Merge(r,g,b,None,imrgb)
-		return imrgb
-
 	def calibrate(self, keep_going=False, retry=True):
 		print 'waiting...'
 		while not self.image and not rospy.is_shutdown():
