@@ -90,8 +90,8 @@ class Intersector(object):
         self.table_pose  = PoseStamped()
         self.rate        = rospy.Rate(20)
         self.tfl         = tf.TransformListener()
-        self.int_pub2    = rospy.Publisher('intersected_points', PointCloud2)
-        self.int_pub     = rospy.Publisher('intersected_point', PointStamped)
+        self.int_pub2    = rospy.Publisher('intersected_points', PointCloud2, queue_size=10)
+        self.int_pub     = rospy.Publisher('intersected_point', PointStamped, queue_size=10)
 
 
         self.table_pose.pose.orientation.w = 1.0
